@@ -121,13 +121,18 @@ export default function JeopardyGame() {
   // UI state
   const [selectedQuestion, setSelectedQuestion] = useState<{categoryIndex: number, questionIndex: number} | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [aiProvider, setAiProvider] = useState('openai');
+  const [aiProvider, setAiProvider] = useState<'openrouter' | 'ollama'>('openrouter');
   const [apiKey, setApiKey] = useState('');
+  const [modelId, setModelId] = useState('');
+  const [ollamaModel, setOllamaModel] = useState('');
+  const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
   const [temperature, setTemperature] = useState(0.7);
   const [systemMessage, setSystemMessage] = useState('Create a high-quality Jeopardy! game board with diverse, challenging, and well-structured categories and questions. Follow these key principles:\n\n- Make clues SPECIFIC with ONE unambiguous answer (e.g., NOT "This East Asian country has a unique blend of traditional culture" - too vague)\n- Use clever, engaging category titles\n- Ensure gradual difficulty increase from $200 to $1000 questions\n- Make clues factually accurate and verifiable\n- Format answers as questions ("Who is/What is...")\n- Do not repeat concepts across categories\n- NEVER include answer words in the clue text');
   const [referenceText, setReferenceText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{success: boolean, message: string} | null>(null);
   const [gameTheme, setGameTheme] = useState('standard');
   const [incorrectPlayers, setIncorrectPlayers] = useState<IncorrectPlayers>({});
   const [dailyDoubleWager, setDailyDoubleWager] = useState<number | null>(null);
@@ -163,6 +168,15 @@ export default function JeopardyGame() {
       
       const savedProvider = localStorage.getItem('jeopardy_ai_provider');
       if (savedProvider) setAiProvider(savedProvider);
+      
+      const savedModelId = localStorage.getItem('jeopardy_model_id');
+      if (savedModelId) setModelId(savedModelId);
+      
+      const savedOllamaModel = localStorage.getItem('jeopardy_ollama_model');
+      if (savedOllamaModel) setOllamaModel(savedOllamaModel);
+      
+      const savedOllamaUrl = localStorage.getItem('jeopardy_ollama_url');
+      if (savedOllamaUrl) setOllamaUrl(savedOllamaUrl);
       
       const savedSystemMessage = localStorage.getItem('jeopardy_system_message');
       if (savedSystemMessage) setSystemMessage(savedSystemMessage);
@@ -672,22 +686,167 @@ export default function JeopardyGame() {
     setShowAnswer(!showAnswer);
   };
 
-  // Generate questions with AI
-  const generateQuestions = async () => {
-    if (!apiKey) {
-      alert("Please enter an API key");
-      return;
+  // Test API Key functionality
+  const testApiKey = async () => {
+    // Clear previous test results
+    setTestResult(null);
+    
+    // Provider-specific validation
+    if (aiProvider === 'openrouter') {
+      if (!apiKey || !apiKey.trim()) {
+        setTestResult({ success: false, message: 'Please enter an API key' });
+        return;
+      }
+      
+      if (!modelId || !modelId.trim()) {
+        setTestResult({ success: false, message: 'Please enter a Model ID' });
+        return;
+      }
+    } else if (aiProvider === 'ollama') {
+      if (!ollamaModel || !ollamaModel.trim()) {
+        setTestResult({ success: false, message: 'Please enter an Ollama model name' });
+        return;
+      }
     }
     
-    // Validate that API key exists
-    if (!apiKey.trim()) {
-      alert("Please enter a valid API key");
-      return;
+    setIsTesting(true);
+    
+    try {
+      const testPrompt = 'Respond with exactly: "API connection successful"';
+      
+      let response;
+      
+      if (aiProvider === 'openrouter') {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': window.location.href,
+            'X-Title': 'Jeopardy Game - API Test'
+          },
+          body: JSON.stringify({
+            model: modelId,
+            messages: [
+              { role: 'user', content: testPrompt }
+            ],
+            max_tokens: 50,
+            temperature: 0.1
+          })
+        });
+      } else {
+        // Ollama API call
+        response = await fetch(`${ollamaUrl}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ollamaModel,
+            messages: [
+              { role: 'user', content: testPrompt }
+            ],
+            stream: false,
+            options: {
+              temperature: 0.1,
+              num_predict: 50
+            }
+          })
+        });
+      }
+      
+      if (!response.ok) {
+        let errorMessage = `Error ${response.status}: `;
+        
+        if (response.status === 401) {
+          errorMessage += 'Invalid API key';
+        } else if (response.status === 404) {
+          errorMessage += 'Model not found. Please check your Model ID';
+        } else if (response.status === 429) {
+          errorMessage += 'Rate limit exceeded. Please wait and try again';
+        } else if (response.status === 402) {
+          errorMessage += 'Insufficient credits on your OpenRouter account';
+        } else {
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage += errorJson.error?.message || response.statusText;
+          } catch {
+            errorMessage += response.statusText;
+          }
+        }
+        
+        setTestResult({ success: false, message: errorMessage });
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Verify we got a response based on provider
+      if (aiProvider === 'openrouter') {
+        if (data.choices && data.choices[0]?.message?.content) {
+          setTestResult({ 
+            success: true, 
+            message: `✓ Connection successful! Model "${modelId}" is working.` 
+          });
+        } else {
+          setTestResult({ 
+            success: false, 
+            message: 'Unexpected response format from API' 
+          });
+        }
+      } else {
+        // Ollama response format
+        if (data.message?.content) {
+          setTestResult({ 
+            success: true, 
+            message: `✓ Ollama connection successful! Model "${ollamaModel}" is working.` 
+          });
+        } else {
+          setTestResult({ 
+            success: false, 
+            message: 'Unexpected response format from Ollama' 
+          });
+        }
+      }
+      
+    } catch (error) {
+      console.error('API test error:', error);
+      setTestResult({ 
+        success: false, 
+        message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // Generate questions with AI
+  const generateQuestions = async () => {
+    // Provider-specific validation
+    if (aiProvider === 'openrouter') {
+      if (!apiKey || !apiKey.trim()) {
+        alert("Please enter an OpenRouter API key");
+        return;
+      }
+      
+      if (!modelId || !modelId.trim()) {
+        alert("Please enter a Model ID (e.g., openai/gpt-4-turbo-preview)");
+        return;
+      }
+    } else if (aiProvider === 'ollama') {
+      if (!ollamaModel || !ollamaModel.trim()) {
+        alert("Please enter an Ollama model name (e.g., llama2, mistral)");
+        return;
+      }
     }
     
     // Save settings to localStorage
     localStorage.setItem('jeopardy_api_key', apiKey);
     localStorage.setItem('jeopardy_ai_provider', aiProvider);
+    localStorage.setItem('jeopardy_model_id', modelId);
+    localStorage.setItem('jeopardy_ollama_model', ollamaModel);
+    localStorage.setItem('jeopardy_ollama_url', ollamaUrl);
     localStorage.setItem('jeopardy_system_message', systemMessage);
     localStorage.setItem('jeopardy_temperature', temperature.toString());
     
@@ -791,7 +950,6 @@ export default function JeopardyGame() {
       }
       
       // If not using mock data, proceed with real API calls
-      const categories = gameState.categories.map(cat => cat.title);
       
       // Create a simpler prompt for debugging API connectivity
       const isDebugMode = false;
@@ -925,11 +1083,8 @@ export default function JeopardyGame() {
       // API endpoints
       const apiEndpoints = {
         // API providers
-        openai: 'https://api.openai.com/v1/chat/completions',
-        mistral: 'https://api.mistral.ai/v1/chat/completions',
-        deepseek: 'https://api.deepseek.com/v1/chat/completions',
-        meta: 'https://api.together.xyz/v1/chat/completions',
-        gemini: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent'
+        openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+        ollama: `${ollamaUrl}/api/chat`
       };
       
       // Set up enhanced retry mechanism with multiple proxy attempts
@@ -940,14 +1095,16 @@ export default function JeopardyGame() {
       
       // API request configurations
       const apiConfigs = {
-        openai: {
+        openrouter: {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': window.location.href,
+            'X-Title': 'Jeopardy Game'
           },
           body: JSON.stringify({
-            model: 'gpt-4',
+            model: modelId || 'openai/gpt-4-turbo-preview',
             messages: [
               { role: 'user', content: prompt }
             ],
@@ -955,66 +1112,20 @@ export default function JeopardyGame() {
             temperature: temperature
           })
         },
-        mistral: {
+        ollama: {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: 'mistral-large-latest',
+            model: ollamaModel,
             messages: [
               { role: 'user', content: prompt }
             ],
-            temperature: temperature
-          })
-        },
-        deepseek: {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'user', content: prompt }
-            ],
-            temperature: temperature
-          })
-        },
-        meta: {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'meta-llama-3-70b-instruct',
-            messages: [
-              { role: 'user', content: prompt }
-            ],
-            temperature: temperature
-          })
-        },
-        gemini: {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  { text: prompt }
-                ]
-              }
-            ],
-            generationConfig: {
+            stream: false,
+            options: {
               temperature: temperature,
-              maxOutputTokens: 4000
+              num_predict: 4000
             }
           })
         }
@@ -1112,14 +1223,14 @@ export default function JeopardyGame() {
           let jsonContent = '';
           
           switch(aiProvider) {
-            case 'openai':
-            case 'mistral':
-            case 'deepseek':
-            case 'meta':
+            case 'openrouter':
               jsonContent = data.choices[0].message.content;
               break;
-            case 'gemini':
-              jsonContent = data.candidates[0].content.parts[0].text;
+            case 'ollama':
+              jsonContent = data.message.content;
+              break;
+            default:
+              jsonContent = data.choices?.[0]?.message?.content || data.message?.content || '';
               break;
           }
           
@@ -1807,25 +1918,167 @@ export default function JeopardyGame() {
           <div className="settings-modal">
             <div className="settings-content">
               <h2>AI Settings</h2>
+              
+              {/* Provider Selection */}
               <div className="form-group">
-                <label>AI Provider:</label>
-                <select value={aiProvider} onChange={(e) => setAiProvider(e.target.value)}>
-                  <option value="openai">GPT-4 (OpenAI)</option>
-                  <option value="gemini">Gemini 1.5 Pro (Google)</option>
-                  <option value="mistral">Mistral AI</option>
-                  <option value="deepseek">DeepSeek</option>
-                  <option value="openrouter">OpenRouter</option>
+                <label>
+                  <span className="label-text">AI Provider:</span>
+                </label>
+                <select 
+                  value={aiProvider} 
+                  onChange={(e) => {
+                    setAiProvider(e.target.value as 'openrouter' | 'ollama');
+                    setTestResult(null);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    backgroundColor: '#001a4d',
+                    color: 'white',
+                    border: '2px solid #4a90e2',
+                    borderRadius: '4px',
+                    fontSize: '1rem'
+                  }}
+                >
+                  <option value="openrouter">OpenRouter (Cloud API)</option>
+                  <option value="ollama">Ollama (Local Models)</option>
                 </select>
               </div>
-              <div className="form-group">
-                <label>API Key:</label>
-                <input 
-                  type="password" 
-                  value={apiKey} 
-                  onChange={(e) => setApiKey(e.target.value)} 
-                  placeholder="Enter your API key"
-                />
+              
+              {/* Test API Key Section */}
+              <div style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                padding: '15px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <button 
+                  onClick={testApiKey}
+                  disabled={isTesting || (aiProvider === 'openrouter' ? (!apiKey || !modelId) : !ollamaModel)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    backgroundColor: isTesting ? '#666' : '#2e7d32',
+                    color: 'white',
+                    border: '2px solid #81c784',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    cursor: isTesting || (aiProvider === 'openrouter' ? (!apiKey || !modelId) : !ollamaModel) ? 'not-allowed' : 'pointer',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {isTesting ? 'Testing...' : 'Test API Connection'}
+                </button>
+                
+                {testResult && (
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '10px',
+                    backgroundColor: testResult.success ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                    border: `1px solid ${testResult.success ? '#4caf50' : '#f44336'}`,
+                    borderRadius: '4px',
+                    color: testResult.success ? '#81c784' : '#ef9a9a',
+                    fontSize: '0.9rem',
+                    fontWeight: testResult.success ? 'bold' : 'normal'
+                  }}>
+                    {testResult.message}
+                  </div>
+                )}
+                
+                <p style={{
+                  marginTop: '10px',
+                  marginBottom: '0',
+                  fontSize: '0.85rem',
+                  color: '#b3d9ff',
+                  fontStyle: 'italic',
+                  textAlign: 'center'
+                }}>
+                  Test your API key and model before generating questions
+                </p>
               </div>
+              
+              {/* OpenRouter-specific fields */}
+              {aiProvider === 'openrouter' && (
+                <>
+                  <div className="form-group">
+                    <label>API Key:</label>
+                    <input 
+                      type="password" 
+                      value={apiKey} 
+                      onChange={(e) => {
+                        setApiKey(e.target.value);
+                        setTestResult(null); // Clear test result when API key changes
+                      }} 
+                      placeholder="Enter your OpenRouter API key"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      <span className="label-text">Model ID:</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      value={modelId} 
+                      onChange={(e) => {
+                        setModelId(e.target.value);
+                        setTestResult(null); // Clear test result when model ID changes
+                      }} 
+                      placeholder="e.g. openai/gpt-4-turbo-preview"
+                    />
+                  </div>
+                </>
+              )}
+              
+              {/* Ollama-specific fields */}
+              {aiProvider === 'ollama' && (
+                <>
+                  <div className="form-group">
+                    <label>
+                      <span className="label-text">Ollama URL:</span>
+                      <span className="label-hint">Local Ollama server endpoint</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      value={ollamaUrl} 
+                      onChange={(e) => {
+                        setOllamaUrl(e.target.value);
+                        setTestResult(null);
+                      }} 
+                      placeholder="http://localhost:11434"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      <span className="label-text">Model Name:</span>
+                      <span className="label-hint">e.g. llama2, mistral, gemma, mixtral</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      value={ollamaModel} 
+                      onChange={(e) => {
+                        setOllamaModel(e.target.value);
+                        setTestResult(null);
+                      }} 
+                      placeholder="e.g. llama2, mistral"
+                    />
+                  </div>
+                  <div style={{
+                    padding: '10px',
+                    backgroundColor: 'rgba(102, 179, 255, 0.1)',
+                    border: '1px solid #4a90e2',
+                    borderRadius: '4px',
+                    marginBottom: '15px',
+                    fontSize: '0.9rem',
+                    color: '#b3d9ff'
+                  }}>
+                    <strong>📝 Note:</strong> Make sure Ollama is running locally with: <code style={{backgroundColor: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '3px'}}>ollama serve</code>
+                    <br />
+                    Pull models with: <code style={{backgroundColor: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '3px'}}>ollama pull llama2</code>
+                  </div>
+                </>
+              )}
               <div className="form-group">
                 <label>
                   <span className="label-text">Temperature:</span>
