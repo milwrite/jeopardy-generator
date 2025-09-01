@@ -758,21 +758,38 @@ export default function JeopardyGame() {
       if (!response.ok) {
         let errorMessage = `Error ${response.status}: `;
         
-        if (response.status === 401) {
-          errorMessage += 'Invalid API key';
-        } else if (response.status === 404) {
-          errorMessage += 'Model not found. Please check your Model ID';
-        } else if (response.status === 429) {
-          errorMessage += 'Rate limit exceeded. Please wait and try again';
-        } else if (response.status === 402) {
-          errorMessage += 'Insufficient credits on your OpenRouter account';
+        if (aiProvider === 'openrouter') {
+          if (response.status === 401) {
+            errorMessage += 'Invalid API key';
+          } else if (response.status === 404) {
+            errorMessage += 'Model not found. Please check your Model ID';
+          } else if (response.status === 429) {
+            errorMessage += 'Rate limit exceeded. Please wait and try again';
+          } else if (response.status === 402) {
+            errorMessage += 'Insufficient credits on your OpenRouter account';
+          } else {
+            const errorText = await response.text();
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage += errorJson.error?.message || response.statusText;
+            } catch {
+              errorMessage += response.statusText;
+            }
+          }
         } else {
-          const errorText = await response.text();
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage += errorJson.error?.message || response.statusText;
-          } catch {
-            errorMessage += response.statusText;
+          // Ollama-specific error handling
+          if (response.status === 404) {
+            errorMessage += `Model "${ollamaModel}" not found. Pull it with: ollama pull ${ollamaModel}`;
+          } else if (response.status === 0 || !response.status) {
+            errorMessage = 'Cannot connect to Ollama. Make sure Ollama is running with: ollama serve';
+          } else {
+            const errorText = await response.text();
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage += errorJson.error || response.statusText;
+            } catch {
+              errorMessage += response.statusText;
+            }
           }
         }
         
@@ -797,7 +814,7 @@ export default function JeopardyGame() {
         }
       } else {
         // Ollama response format
-        if (data.message?.content) {
+        if (data.message?.content || (data.response && typeof data.response === 'string')) {
           setTestResult({ 
             success: true, 
             message: `✓ Ollama connection successful! Model "${ollamaModel}" is working.` 
@@ -805,16 +822,28 @@ export default function JeopardyGame() {
         } else {
           setTestResult({ 
             success: false, 
-            message: 'Unexpected response format from Ollama' 
+            message: 'Unexpected response format from Ollama. Make sure Ollama is running and the model is installed.' 
           });
         }
       }
       
     } catch (error) {
       console.error('API test error:', error);
+      
+      let errorMessage = 'Connection failed: ';
+      if (aiProvider === 'ollama') {
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          errorMessage = 'Cannot connect to Ollama. Please ensure:\n1. Ollama is installed and running (ollama serve)\n2. The URL is correct (default: http://localhost:11434)\n3. No firewall is blocking the connection';
+        } else {
+          errorMessage += error instanceof Error ? error.message : 'Unknown error';
+        }
+      } else {
+        errorMessage += error instanceof Error ? error.message : 'Unknown error';
+      }
+      
       setTestResult({ 
         success: false, 
-        message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        message: errorMessage
       });
     } finally {
       setIsTesting(false);
@@ -1227,7 +1256,8 @@ export default function JeopardyGame() {
               jsonContent = data.choices[0].message.content;
               break;
             case 'ollama':
-              jsonContent = data.message.content;
+              // Ollama can return content in different formats
+              jsonContent = data.message?.content || data.response || '';
               break;
             default:
               jsonContent = data.choices?.[0]?.message?.content || data.message?.content || '';
