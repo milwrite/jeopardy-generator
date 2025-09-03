@@ -167,7 +167,9 @@ export default function JeopardyGame() {
       if (savedKey) setApiKey(savedKey);
       
       const savedProvider = localStorage.getItem('jeopardy_ai_provider');
-      if (savedProvider) setAiProvider(savedProvider);
+      if (savedProvider && (savedProvider === 'openrouter' || savedProvider === 'ollama')) {
+        setAiProvider(savedProvider);
+      }
       
       const savedModelId = localStorage.getItem('jeopardy_model_id');
       if (savedModelId) setModelId(savedModelId);
@@ -726,7 +728,7 @@ export default function JeopardyGame() {
             'X-Title': 'Jeopardy Game - API Test'
           },
           body: JSON.stringify({
-            model: modelId,
+            model: modelId || 'gpt-oss-120b',
             messages: [
               { role: 'user', content: testPrompt }
             ],
@@ -759,7 +761,15 @@ export default function JeopardyGame() {
         let errorMessage = `Error ${response.status}: `;
         
         if (aiProvider === 'openrouter') {
-          if (response.status === 401) {
+          if (response.status === 400) {
+            const errorText = await response.text();
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage += errorJson.error?.message || 'Bad request. Please check your API key and model ID format';
+            } catch {
+              errorMessage += 'Bad request. Please check your API key and model ID format';
+            }
+          } else if (response.status === 401) {
             errorMessage += 'Invalid API key';
           } else if (response.status === 404) {
             errorMessage += 'Model not found. Please check your Model ID';
@@ -860,7 +870,7 @@ export default function JeopardyGame() {
       }
       
       if (!modelId || !modelId.trim()) {
-        alert("Please enter a Model ID (e.g., openai/gpt-4-turbo-preview)");
+        alert("Please enter a Model ID (e.g., openai/gpt-4.1-mini, google/gemini-2.0-flash-001)");
         return;
       }
     } else if (aiProvider === 'ollama') {
@@ -1133,7 +1143,7 @@ export default function JeopardyGame() {
             'X-Title': 'Jeopardy Game'
           },
           body: JSON.stringify({
-            model: modelId || 'openai/gpt-4-turbo-preview',
+            model: modelId || 'gpt-oss-120b',
             messages: [
               { role: 'user', content: prompt }
             ],
@@ -1186,20 +1196,6 @@ export default function JeopardyGame() {
             credentials: 'omit'
           };
           
-          // For proxies, we need to adjust the headers to work with the proxy service
-          if (endpointKey.includes('Proxy')) {
-            // For certain proxies, we may need to adjust the headers
-            if (endpointKey === 'claudeProxy2' && fetchConfig.headers) {
-              // Create a new headers object with the additional header
-              const headers = { ...fetchConfig.headers };
-              
-              // Add the header in a type-safe way
-              (headers as any)['X-Requested-With'] = 'XMLHttpRequest';
-              
-              // Update the headers in the config
-              fetchConfig.headers = headers;
-            }
-          }
           
           const response = await fetch(apiEndpoints[endpointKey as keyof typeof apiEndpoints], fetchConfig);
           
@@ -1207,7 +1203,18 @@ export default function JeopardyGame() {
             // Handle specific error codes with more helpful messages
             let errorMessage = "";
             
-            if (response.status === 429) {
+            if (response.status === 400) {
+              const responseText = await response.text();
+              console.error("Bad request error details:", responseText);
+              let parsedError = "";
+              try {
+                const errorJson = JSON.parse(responseText);
+                parsedError = errorJson.error?.message || errorJson.message || "";
+              } catch {
+                parsedError = responseText;
+              }
+              throw new Error(`Bad request (400): ${parsedError || 'Please check your API key and model ID format. For OpenRouter, use format like "openai/gpt-4o-mini" or "anthropic/claude-3-haiku"'}`);
+            } else if (response.status === 429) {
               errorMessage = "Rate limit exceeded. Waiting and retrying...";
               // Wait longer with each retry
               await new Promise(resolve => setTimeout(resolve, 2000 * (retries + 1)));
@@ -2047,6 +2054,12 @@ export default function JeopardyGame() {
                   <div className="form-group">
                     <label>
                       <span className="label-text">Model ID:</span>
+                      <span className="label-hint" style={{ fontSize: '0.85em', color: '#888', display: 'block', marginTop: '4px' }}>
+                        Suggested: google/gemini-2.5-flash-lite, google/gemini-2.0-flash-001, google/gemma-3-27b,
+                        openai/gpt-5-nano, openai/gpt-4.1-mini, openai/gpt-oss-120b,
+                        qwen/qwen3-235b-a22b-2507, qwen/qwen3-30b-a3b-thinking-2507,
+                        deepseek/deepseek-chat-v3.1, anthropic/claude-3.5-haiku
+                      </span>
                     </label>
                     <input 
                       type="text" 
@@ -2055,7 +2068,7 @@ export default function JeopardyGame() {
                         setModelId(e.target.value);
                         setTestResult(null); // Clear test result when model ID changes
                       }} 
-                      placeholder="e.g. openai/gpt-4-turbo-preview"
+                      placeholder="e.g. openai/gpt-4.1-mini, google/gemini-2.0-flash-001, deepseek/deepseek-chat-v3.1"
                     />
                   </div>
                 </>
