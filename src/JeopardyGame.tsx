@@ -1159,6 +1159,7 @@ export default function JeopardyGame() {
           body: JSON.stringify({
             model: ollamaModel,
             messages: [
+              { role: 'system', content: systemMessage },
               { role: 'user', content: prompt }
             ],
             stream: false,
