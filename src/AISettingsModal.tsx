@@ -330,6 +330,7 @@ export default function AISettingsModal({
   const ENV_OPENROUTER_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
   const [aiProvider, setAiProvider] = useState<AIProvider>('openrouter');
   const [apiKey, setApiKey] = useState(ENV_OPENROUTER_KEY);
+  const [showKeyInput, setShowKeyInput] = useState(false);
   const [modelId, setModelId] = useState('google/gemini-3.1-flash-lite');
   const [ollamaModel, setOllamaModel] = useState('jeopardylm');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11435');
@@ -937,13 +938,20 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           <div className="ai-provider-panel">
             <div className="ai-field-group">
               <label className="ai-field-label">API Key</label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
-                placeholder="sk-or-..."
-                className="ai-input"
-              />
+              {apiKey && !showKeyInput ? (
+                <div className="ai-key-configured">
+                  <span>&#x2713; API key configured</span>
+                  <button type="button" className="ai-key-change" onClick={() => setShowKeyInput(true)}>change</button>
+                </div>
+              ) : (
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
+                  placeholder="sk-or-..."
+                  className="ai-input"
+                />
+              )}
             </div>
             <div className="ai-field-group">
               <label className="ai-field-label">Model</label>
