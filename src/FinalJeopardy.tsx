@@ -19,14 +19,19 @@ async function generateFinalClue(): Promise<FJClue> {
     'The clue must be a statement, never a question, and must not contain the answer words.';
 
   let content = '';
-  if (g('jeopardy_ai_provider', 'ollama') === 'openrouter') {
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const useProxy = g('jeopardy_ai_provider', 'openrouter') === 'openrouter' && !g('jeopardy_api_key');
+  if (g('jeopardy_ai_provider', 'openrouter') === 'openrouter') {
+    const r = await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${g('jeopardy_api_key')}`,
-        'HTTP-Referer': window.location.href,
-        'X-Title': 'Jeopardy Game',
+        ...(useProxy
+          ? {}
+          : {
+              Authorization: `Bearer ${g('jeopardy_api_key')}`,
+              'HTTP-Referer': window.location.href,
+              'X-Title': 'Jeopardy Game',
+            }),
       },
       body: JSON.stringify({
         model: g('jeopardy_model_id', 'google/gemini-3.1-flash-lite'),

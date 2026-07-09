@@ -5,7 +5,8 @@
     "dev": "next dev",
     "build": "next build",
     "check": "tsc --noEmit",
-    "start": "next start",
+    "start": "npx serve@latest out",
+    "preview": "npx serve@latest out",
     "seed:admin": "node scripts/seed-admin.js",
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1"

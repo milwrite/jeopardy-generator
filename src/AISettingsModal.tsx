@@ -63,25 +63,30 @@ async function readStreamedContent(
 
 // A quick, fun standalone clue from OpenRouter (gemini) to entertain the player
 // while the local model grinds out the full board. Best-effort; silently no-ops.
-async function fetchFillerClue(apiKey: string): Promise<string> {
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': window.location.href,
-      'X-Title': 'Jeopardy Game',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-3.1-flash-lite',
-      messages: [{
-        role: 'user',
-        content: 'Write ONE clever Jeopardy! clue as a single declarative statement on a random interesting topic. Then on a new line put "A: " followed by the response phrased as a question. No preamble, under 40 words total.',
-      }],
-      max_tokens: 120,
-      temperature: 0.9,
-    }),
+async function fetchFillerClue(useProxy: boolean, apiKey: string): Promise<string> {
+  const body = JSON.stringify({
+    model: 'google/gemini-3.1-flash-lite',
+    messages: [{
+      role: 'user',
+      content: 'Write ONE clever Jeopardy! clue as a single declarative statement on a random interesting topic. Then on a new line put "A: " followed by the response phrased as a question. No preamble, under 40 words total.',
+    }],
+    max_tokens: 120,
+    temperature: 0.9,
   });
+
+  const r = await fetch(
+    useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(useProxy
+          ? {}
+          : { Authorization: `Bearer ${apiKey}`, 'HTTP-Referer': window.location.href, 'X-Title': 'Jeopardy Game' }),
+      },
+      body,
+    },
+  );
   if (!r.ok) throw new Error('filler unavailable');
   const d = await r.json();
   return (d.choices?.[0]?.message?.content || '').trim();
@@ -324,14 +329,16 @@ export default function AISettingsModal({
   onClose,
   onGeneratedCategories,
 }: AISettingsModalProps) {
-  // OpenRouter ("External") is the default, always-active provider. The key is
-  // pre-filled from a build-time env var (set NEXT_PUBLIC_OPENROUTER_API_KEY in
-  // .env.local — not committed) so users never have to enter it.
-  const ENV_OPENROUTER_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+  // OpenRouter ("External") is the default provider. When no personal API key is
+  // stored, calls route through a same-origin worker proxy that adds a runtime
+  // secret, so the key stays out of the static bundle and users don't have to
+  // paste one in. Power users can still save their own key in localStorage to
+  // hit OpenRouter directly.
   const [aiProvider, setAiProvider] = useState<AIProvider>('openrouter');
-  const [apiKey, setApiKey] = useState(ENV_OPENROUTER_KEY);
+  const [apiKey, setApiKey] = useState('');
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [modelId, setModelId] = useState('google/gemini-3.1-flash-lite');
+  const useProxy = aiProvider === 'openrouter' && !apiKey.trim();
   const [ollamaModel, setOllamaModel] = useState('jeopardylm');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11435');
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -401,7 +408,9 @@ export default function AISettingsModal({
     setTestResult(null);
 
     if (aiProvider === 'openrouter') {
-      if (!apiKey.trim()) {
+      if (useProxy) {
+        // No key required when routing through the worker proxy.
+      } else if (!apiKey.trim()) {
         setTestResult({ success: false, message: 'Please enter an API key' });
         return;
       }
@@ -422,13 +431,17 @@ export default function AISettingsModal({
 
       const response =
         aiProvider === 'openrouter'
-          ? await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          ? await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-                'HTTP-Referer': window.location.href,
-                'X-Title': 'Jeopardy Game - API Test',
+                ...(useProxy
+                  ? {}
+                  : {
+                      Authorization: `Bearer ${apiKey}`,
+                      'HTTP-Referer': window.location.href,
+                      'X-Title': 'Jeopardy Game - API Test',
+                    }),
               },
               body: JSON.stringify({
                 model: modelId || 'gpt-oss-120b',
@@ -535,7 +548,9 @@ export default function AISettingsModal({
     setTestResult(null);
 
     if (aiProvider === 'openrouter') {
-      if (!apiKey.trim()) {
+      if (useProxy) {
+        // Worker proxy provides the key; no user key required.
+      } else if (!apiKey.trim()) {
         setTestResult({ success: false, message: 'Please enter an OpenRouter API key' });
         return;
       }
@@ -648,7 +663,7 @@ Return ONLY JSON (no markdown, no commentary) in EXACTLY this shape:
 Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dailyDouble:true total.`;
 
       const apiEndpoints = {
-        openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+        openrouter: useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions',
         ollama: `${ollamaUrl}/api/chat`,
       };
 
@@ -657,9 +672,13 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-            'HTTP-Referer': window.location.href,
-            'X-Title': 'Jeopardy Game',
+            ...(useProxy
+              ? {}
+              : {
+                  Authorization: `Bearer ${apiKey}`,
+                  'HTTP-Referer': window.location.href,
+                  'X-Title': 'Jeopardy Game',
+                }),
           },
           body: JSON.stringify({
             model: modelId || 'gpt-oss-120b',
@@ -938,19 +957,42 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           <div className="ai-provider-panel">
             <div className="ai-field-group">
               <label className="ai-field-label">API Key</label>
-              {apiKey && !showKeyInput ? (
+              {useProxy ? (
+                <div className="ai-key-configured">
+                  <span>&#x2713; External AI enabled by default</span>
+                  <button
+                    type="button"
+                    className="ai-key-change"
+                    onClick={() => { setShowKeyInput(true); setTestResult(null); }}
+                  >
+                    use my key
+                  </button>
+                </div>
+              ) : apiKey && !showKeyInput ? (
                 <div className="ai-key-configured">
                   <span>&#x2713; API key configured</span>
                   <button type="button" className="ai-key-change" onClick={() => setShowKeyInput(true)}>change</button>
                 </div>
               ) : (
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
-                  placeholder="sk-or-..."
-                  className="ai-input"
-                />
+                <>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
+                    placeholder="sk-or-..."
+                    className="ai-input"
+                  />
+                  {apiKey && (
+                    <button
+                      type="button"
+                      className="ai-key-change"
+                      onClick={() => { setShowKeyInput(false); setApiKey(''); setTestResult(null); }}
+                      style={{ marginTop: 6 }}
+                    >
+                      use default proxy instead
+                    </button>
+                  )}
+                </>
               )}
             </div>
             <div className="ai-field-group">
