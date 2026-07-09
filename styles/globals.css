@@ -30,7 +30,7 @@ body {
 /* Button system — 4-tier semantic hierarchy */
 button {
   font-family: var(--font-display, 'Barlow Condensed'), sans-serif;
-  font-size: 0.83rem;
+  font-size: 1.04rem;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -147,7 +147,7 @@ button:disabled {
 .game-title {
   text-align: center;
   color: var(--jeopardy-gold);
-  font-size: 2.5rem;
+  font-size: 3.12rem;
   margin-bottom: 10px; /* Reduced from 20px */
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   font-weight: bold;
@@ -190,7 +190,7 @@ button:disabled {
   justify-content: center;
   height: 38px;
   padding: 0 14px;
-  font-size: 0.8rem;
+  font-size: 1.00rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -225,7 +225,7 @@ button:disabled {
 .game-controls .theme-selector { text-transform: none; letter-spacing: normal; }
 .game-controls .cloud-username {
   display: inline-flex; align-items: center; padding: 0 8px;
-  font-size: 0.78rem; color: #ffe9a8; white-space: nowrap;
+  font-size: 0.98rem; color: #ffe9a8; white-space: nowrap;
 }
 
 /* Config: per-category topic inputs (2 rows x 3 cols) */
@@ -233,11 +233,11 @@ button:disabled {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 9px 12px; border-radius: 6px;
   background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.5);
-  color: #15803d; font-size: 0.9rem;
+  color: #15803d; font-size: 1.12rem;
 }
 .ai-key-change {
   background: none; border: none; color: #3a5a5e; cursor: pointer;
-  text-decoration: underline dotted; font-size: 0.8rem; padding: 0;
+  text-decoration: underline dotted; font-size: 1.00rem; padding: 0;
 }
 
 .category-topics-grid {
@@ -259,7 +259,7 @@ button:disabled {
   display: flex; align-items: center; justify-content: center; padding: 26px;
 }
 .gen-overlay-inner { width: 100%; max-width: 470px; text-align: center; }
-.gen-title { color: var(--jeopardy-gold, #ffd700); font-size: 1.25rem; margin: 0 0 16px; }
+.gen-title { color: var(--jeopardy-gold, #ffd700); font-size: 1.56rem; margin: 0 0 16px; }
 .gen-progress-track {
   height: 14px; border-radius: 999px; overflow: hidden;
   background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 215, 0, 0.35);
@@ -275,7 +275,7 @@ button:disabled {
   background: rgba(21, 30, 80, 0.9); border: 1px solid rgba(255, 215, 0, 0.3);
 }
 .gen-filler-label {
-  font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 0.90rem; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--jeopardy-gold, #ffd700); margin-bottom: 8px;
 }
 .gen-filler-text { color: #eef2ff; line-height: 1.5; white-space: pre-line; }
@@ -289,7 +289,7 @@ button:disabled {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
   text-align: center;
 }
-.final-jeopardy h2 { color: var(--jeopardy-gold, #ffd700); font-size: 2rem; margin: 0 0 8px; }
+.final-jeopardy h2 { color: var(--jeopardy-gold, #ffd700); font-size: 2.50rem; margin: 0 0 8px; }
 .fj-section { max-width: 640px; margin: 0 auto; }
 .fj-sub { color: #cdd6f4; margin-bottom: 18px; }
 .fj-row {
@@ -302,14 +302,14 @@ button:disabled {
   width: 120px; padding: 8px 10px; border-radius: 6px;
   border: 1px solid rgba(255, 215, 0, 0.5); background: rgba(0, 0, 0, 0.3); color: #fff;
 }
-.fj-max { color: #9aa6c8; font-size: 0.85rem; }
+.fj-max { color: #9aa6c8; font-size: 1.06rem; }
 .fj-actions { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
 .fj-category {
-  color: var(--jeopardy-gold, #ffd700); font-size: 1.4rem; font-weight: 800;
+  color: var(--jeopardy-gold, #ffd700); font-size: 1.75rem; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 18px;
 }
 .fj-clue { font-size: 1.6rem; line-height: 1.4; color: #fff; margin: 12px 0 20px; }
-.fj-answer { font-size: 1.2rem; color: #ffe9a8; margin: 16px 0; }
+.fj-answer { font-size: 1.50rem; color: #ffe9a8; margin: 16px 0; }
 .fj-loading { color: #cdd6f4; font-style: italic; }
 .fj-judge { display: flex; gap: 8px; }
 .fj-judge-btn {
@@ -321,7 +321,7 @@ button:disabled {
 .fj-results { list-style: none; padding: 0; max-width: 420px; margin: 10px auto; }
 .fj-results li {
   display: flex; justify-content: space-between; padding: 12px 16px; margin-bottom: 8px;
-  border-radius: 8px; background: rgba(0, 0, 0, 0.25); font-size: 1.1rem; color: #fff;
+  border-radius: 8px; background: rgba(0, 0, 0, 0.25); font-size: 1.38rem; color: #fff;
 }
 .fj-results li.fj-winner {
   background: rgba(255, 215, 0, 0.2); border: 1px solid var(--jeopardy-gold, #ffd700);
@@ -374,7 +374,7 @@ button:disabled {
   position: absolute;
   top: 5px;
   right: 5px;
-  font-size: 0.8rem;
+  font-size: 1.00rem;
   opacity: 0.7;
 }
 
@@ -457,7 +457,7 @@ button:disabled {
   right: 5px;
   background-color: var(--jeopardy-gold);
   color: var(--jeopardy-blue);
-  font-size: 0.7rem;
+  font-size: 0.88rem;
   font-weight: bold;
   padding: 2px 4px;
   border-radius: 4px;
@@ -469,7 +469,7 @@ button:disabled {
   position: absolute;
   top: 5px;
   left: 5px;
-  font-size: 0.7rem;
+  font-size: 0.88rem;
   padding: 2px 4px;
   border-radius: 4px;
   font-weight: bold;
@@ -534,7 +534,7 @@ button:disabled {
 .correct-response {
   color: var(--jeopardy-gold);
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 1.50rem;
   text-transform: uppercase;
 }
 
@@ -562,7 +562,7 @@ button:disabled {
 .player-selection h4 {
   color: var(--jeopardy-gold);
   margin-bottom: 10px;
-  font-size: 1.2rem;
+  font-size: 1.50rem;
 }
 
 /* Multiple player deduction styles */
@@ -579,7 +579,7 @@ button:disabled {
 .multi-deduction h4 {
   color: var(--jeopardy-gold);
   margin-bottom: 15px;
-  font-size: 1.2rem;
+  font-size: 1.50rem;
   text-align: center;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -634,7 +634,7 @@ button:disabled {
   margin-top: 0.75rem;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
-  font-size: 1.1rem;
+  font-size: 1.38rem;
 }
 
 .deduct-multiple-button:hover:not(:disabled) {
@@ -692,7 +692,7 @@ button:disabled {
   margin: 0 0 3px;
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
-  font-size: 1.1rem;
+  font-size: 1.38rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -750,7 +750,7 @@ button:disabled {
 
 
 .score {
-  font-size: 1.3rem; /* Reduced from 1.5rem */
+  font-size: 1.62rem; /* Reduced from 1.5rem */
   font-weight: bold;
   color: var(--jeopardy-gold);
   text-align: center;
@@ -806,7 +806,7 @@ button:disabled {
 }
 
 .temperature-value {
-  font-size: 1.1rem;
+  font-size: 1.38rem;
   font-weight: bold;
   color: #ffffff;
   min-width: 2rem;
@@ -847,7 +847,7 @@ button:disabled {
   color: #ffffff;
   text-align: center;
   margin-bottom: 20px;
-  font-size: 1.8rem;
+  font-size: 2.25rem;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
@@ -865,14 +865,14 @@ button:disabled {
 
 .label-text {
   display: block;
-  font-size: 1.1rem;
+  font-size: 1.38rem;
   color: #ffffff;
   font-weight: 600;
 }
 
 .label-hint {
   display: block;
-  font-size: 0.85rem;
+  font-size: 1.06rem;
   font-weight: normal;
   color: #b3d9ff;
   margin-top: 2px;
@@ -936,7 +936,7 @@ button:disabled {
 .reference-text-group textarea {
   border-left: 4px solid #4caf50;
   background-color: rgba(0, 26, 77, 0.85);
-  font-size: 0.9rem;
+  font-size: 1.12rem;
 }
 
 .button-group {
@@ -958,7 +958,7 @@ button:disabled {
 
 .export-button, .import-button {
   padding: 8px 15px;
-  font-size: 0.95rem;
+  font-size: 1.19rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1038,13 +1038,13 @@ button:disabled {
 
 .saved-board-info h3 {
   margin: 0 0 5px 0;
-  font-size: 1.1rem;
+  font-size: 1.38rem;
   color: var(--jeopardy-gold);
 }
 
 .saved-date {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 1.06rem;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -1052,7 +1052,7 @@ button:disabled {
   background: none;
   border: none;
   color: #f44336;
-  font-size: 1.2rem;
+  font-size: 1.50rem;
   cursor: pointer;
   padding: 5px;
   margin: 0;
@@ -1121,7 +1121,7 @@ button:disabled {
   }
   
   .game-title {
-    font-size: 2.2rem; /* Smaller title */
+    font-size: 2.75rem; /* Smaller title */
     margin-bottom: 5px; /* Reduced margin */
   }
   
@@ -1212,7 +1212,7 @@ button:disabled {
     flex: 1;
     min-width: 140px;
     max-width: 200px;
-    font-size: 0.85rem;
+    font-size: 1.06rem;
     padding: 12px 10px; /* Larger touch target */
     margin: 0;
   }
@@ -1239,7 +1239,7 @@ button:disabled {
   }
   
   .deduct-multiple-button {
-    font-size: 0.95rem;
+    font-size: 1.19rem;
     padding: 0.8rem; /* Larger touch target */
     margin-bottom: 20px; /* Additional space at bottom */
     min-height: 44px; /* Minimum height for touch targets */
@@ -1292,7 +1292,7 @@ button:disabled {
   }
   
   .game-title {
-    font-size: 1.8rem; /* Smaller title on XS screens */
+    font-size: 2.25rem; /* Smaller title on XS screens */
     margin-top: 5px;
     margin-bottom: 5px;
   }
@@ -1377,7 +1377,7 @@ button:disabled {
 .error-content h3 {
   color: #f44336;
   margin-top: 0;
-  font-size: 1.5rem;
+  font-size: 1.88rem;
   margin-bottom: 15px;
 }
 
@@ -1442,7 +1442,7 @@ button:disabled {
 
 .daily-double-reveal h2 {
   color: var(--jeopardy-gold);
-  font-size: 2.5rem;
+  font-size: 3.12rem;
   margin: 0;
   animation: scaleText 0.8s ease-in-out;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
@@ -1457,7 +1457,7 @@ button:disabled {
 }
 
 .daily-double-value {
-  font-size: 1.8rem;
+  font-size: 2.25rem;
   color: white;
   font-weight: bold;
   margin-top: 10px;
@@ -1477,7 +1477,7 @@ button:disabled {
 
 .wager-instructions {
   color: white;
-  font-size: 1.3rem;
+  font-size: 1.62rem;
   margin-bottom: 15px;
 }
 
@@ -1488,7 +1488,7 @@ button:disabled {
 }
 
 .wager-info p {
-  font-size: 1.1rem;
+  font-size: 1.38rem;
   color: rgba(255, 255, 255, 0.8);
   margin: 5px 0;
 }
@@ -1498,7 +1498,7 @@ button:disabled {
   font-weight: bold;
   font-style: italic;
   text-align: center;
-  font-size: 1rem !important;
+  font-size: 1.25rem !important;
   margin-top: 10px !important;
 }
 
@@ -1512,7 +1512,7 @@ button:disabled {
 .wager-input {
   width: 200px;
   padding: 10px;
-  font-size: 1.2rem;
+  font-size: 1.50rem;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.3);
   border: 2px solid var(--jeopardy-gold);
@@ -1523,7 +1523,7 @@ button:disabled {
 .wager-button {
   width: 200px;
   padding: 12px;
-  font-size: 1.1rem;
+  font-size: 1.38rem;
   background-color: var(--jeopardy-gold);
   color: var(--jeopardy-dark-blue);
   border: none;
@@ -1559,7 +1559,7 @@ button:disabled {
 .daily-double-header h2 {
   color: var(--jeopardy-gold);
   margin: 0;
-  font-size: 1.8rem;
+  font-size: 2.25rem;
 }
 
 .wager-display {
@@ -1568,7 +1568,7 @@ button:disabled {
   padding: 5px 10px;
   border-radius: 4px;
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 1.50rem;
   animation: pulseWager 1.5s infinite alternate;
 }
 
@@ -1637,7 +1637,7 @@ button:disabled {
 
 .ai-settings-title {
   font-family: var(--font-display, 'Barlow Condensed'), sans-serif;
-  font-size: 1.75rem;
+  font-size: 2.19rem;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.04em;
@@ -1647,7 +1647,7 @@ button:disabled {
 
 .ai-settings-subtitle {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.72rem;
+  font-size: 0.90rem;
   color: #00e5ff;
   margin: 4px 0 0;
   letter-spacing: 0.06em;
@@ -1661,7 +1661,7 @@ button:disabled {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  font-size: 1rem;
+  font-size: 1.25rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1685,7 +1685,7 @@ button:disabled {
 .provider-tab {
   flex: 1;
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.82rem;
+  font-size: 1.02rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: #5a7a9f;
@@ -1724,7 +1724,7 @@ button:disabled {
 
 .ai-field-label {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.72rem;
+  font-size: 0.90rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1733,7 +1733,7 @@ button:disabled {
 
 .ai-optional {
   font-weight: 400;
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   color: #3a5a7f;
   margin-left: 6px;
   text-transform: lowercase;
@@ -1742,7 +1742,7 @@ button:disabled {
 
 .ai-field-saved {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   color: #00c853;
   letter-spacing: 0.04em;
 }
@@ -1761,7 +1761,7 @@ button:disabled {
   border-radius: 6px;
   color: #e0ecff;
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.85rem;
+  font-size: 1.06rem;
   padding: 10px 14px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -1780,7 +1780,7 @@ button:disabled {
   border: 1px solid #1a3a6a;
   border-radius: 6px;
   color: #4a7aaf;
-  font-size: 1rem;
+  font-size: 1.25rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1799,7 +1799,7 @@ button:disabled {
 
 .model-chip-group-label {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #2a4a6a;
@@ -1814,7 +1814,7 @@ button:disabled {
 
 .model-chip {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.72rem;
+  font-size: 0.90rem;
   padding: 5px 10px;
   background: #0b1e42;
   border: 1px solid #1e3f72;
@@ -1838,7 +1838,7 @@ button:disabled {
 /* Ollama Note */
 .ai-ollama-note {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.75rem;
+  font-size: 0.94rem;
   color: #3a6090;
   background: rgba(0, 100, 200, 0.08);
   border: 1px solid #1a3a6a;
@@ -1851,7 +1851,7 @@ button:disabled {
   color: #00e5ff;
   padding: 1px 5px;
   border-radius: 3px;
-  font-size: 0.78rem;
+  font-size: 0.98rem;
 }
 
 /* Temperature Segmented Control */
@@ -1885,7 +1885,7 @@ button:disabled {
 
 .temp-seg-val {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.85rem;
+  font-size: 1.06rem;
   font-weight: 600;
   color: #8ab0d8;
 }
@@ -1893,7 +1893,7 @@ button:disabled {
 
 .temp-seg-label {
   font-family: var(--font-display, 'Barlow Condensed'), sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.81rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1910,7 +1910,7 @@ button:disabled {
 
 .ai-char-count {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.65rem;
+  font-size: 0.81rem;
   color: #2a4a6a;
 }
 
@@ -1921,7 +1921,7 @@ button:disabled {
   border-radius: 6px;
   color: #cce0ff;
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.8rem;
+  font-size: 1.00rem;
   line-height: 1.6;
   padding: 12px 14px;
   resize: vertical;
@@ -1940,7 +1940,7 @@ button:disabled {
 /* Test Result */
 .ai-test-result {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
-  font-size: 0.8rem;
+  font-size: 1.00rem;
   padding: 10px 14px;
   border-radius: 6px;
   display: flex;
@@ -1961,7 +1961,7 @@ button:disabled {
 }
 .ai-test-icon {
   flex-shrink: 0;
-  font-size: 0.9rem;
+  font-size: 1.12rem;
   margin-top: 1px;
 }
 
@@ -1977,7 +1977,7 @@ button:disabled {
 .ai-btn-test {
   flex: 1;
   font-family: var(--font-display, 'Barlow Condensed'), sans-serif;
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2002,7 +2002,7 @@ button:disabled {
 .ai-btn-generate {
   flex: 2;
   font-family: var(--font-display, 'Barlow Condensed'), sans-serif;
-  font-size: 1.05rem;
+  font-size: 1.31rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

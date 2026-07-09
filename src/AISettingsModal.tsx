@@ -892,7 +892,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
   }, [ollamaUrl, ollamaModel]);
 
   const statusStyle = {
-    padding: '10px 14px', borderRadius: 8, marginBottom: 18, fontSize: 14,
+    padding: '10px 14px', borderRadius: 8, marginBottom: 18, fontSize: 18,
     display: 'flex', alignItems: 'center', gap: 8,
     background: serverStatus === 'online' ? 'rgba(34,197,94,0.12)'
       : serverStatus === 'offline' ? 'rgba(239,68,68,0.12)' : 'rgba(148,163,184,0.12)',
