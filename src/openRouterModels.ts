@@ -23,6 +23,12 @@ export function getOpenRouterModelOptions(modelId: string) {
     : {};
 }
 
+export function getOpenRouterBoardResponseFormat(modelId: string) {
+  return normalizeOpenRouterModelId(modelId) === 'google/gemini-3.1-flash-lite'
+    ? { type: 'json_object' as const }
+    : JEOPARDY_BOARD_RESPONSE_FORMAT;
+}
+
 export const JEOPARDY_BOARD_RESPONSE_FORMAT = {
   type: 'json_schema',
   json_schema: {
