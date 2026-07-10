@@ -270,6 +270,7 @@ button:disabled {
   transition: width 0.3s ease;
 }
 .gen-progress-pct { margin-top: 8px; font-variant-numeric: tabular-nums; color: #ffe9a8; font-weight: 700; }
+.gen-progress-status { margin-top: 4px; color: #cdd6f4; }
 .gen-filler {
   margin-top: 22px; padding: 16px; border-radius: 10px; text-align: left;
   background: rgba(21, 30, 80, 0.9); border: 1px solid rgba(255, 215, 0, 0.3);

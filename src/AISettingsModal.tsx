@@ -6,6 +6,13 @@ import {
   defaultCategories,
   defaultValues,
 } from './jeopardyDefaults';
+import { readGeneratedBoardStream } from './generationProgress';
+import {
+  getOpenRouterModelOptions,
+  JEOPARDY_BOARD_RESPONSE_FORMAT,
+  normalizeOpenRouterModelId,
+  OPENROUTER_MODELS,
+} from './openRouterModels';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, Category } from './jeopardyTypes';
 
@@ -22,43 +29,6 @@ const DEFAULT_SYSTEM_MESSAGE =
 interface AISettingsModalProps {
   onClose: () => void;
   onGeneratedCategories: (categories: Category[]) => void;
-}
-
-// Read a streamed Ollama-shape NDJSON response, accumulating content and reporting
-// progress. Progress is genuinely driven by tokens actually received (denominator
-// is an estimate of a full board's length; it snaps to 100% when the stream ends).
-async function readStreamedContent(
-  response: Response,
-  onProgress: (pct: number) => void,
-): Promise<string> {
-  const reader = response.body?.getReader();
-  if (!reader) return '';
-  const decoder = new TextDecoder();
-  const EXPECTED_CHARS = 5200; // ~full 6-category board of JSON
-  let full = '';
-  let buffer = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const chunk = JSON.parse(line);
-        const piece = chunk?.message?.content || chunk?.response || '';
-        if (piece) {
-          full += piece;
-          onProgress(Math.min(97, Math.round((full.length / EXPECTED_CHARS) * 100)));
-        }
-      } catch {
-        /* partial line; keep buffering */
-      }
-    }
-  }
-  onProgress(100);
-  return full;
 }
 
 // A quick, fun standalone clue from OpenRouter (gemini) to entertain the player
@@ -348,6 +318,7 @@ export default function AISettingsModal({
   const [categoryTopics, setCategoryTopics] = useState<string[]>(['', '', '', '', '', '']);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState('Waiting for generated clues…');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -372,7 +343,11 @@ export default function AISettingsModal({
 
       const savedModelId = localStorage.getItem('jeopardy_model_id');
       if (savedModelId) {
-        setModelId(savedModelId);
+        const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
+        setModelId(normalizedModelId);
+        if (normalizedModelId !== savedModelId) {
+          localStorage.setItem('jeopardy_model_id', normalizedModelId);
+        }
       }
 
       const savedOllamaModel = localStorage.getItem('jeopardy_ollama_model');
@@ -448,6 +423,7 @@ export default function AISettingsModal({
                 messages: [{ role: 'user', content: testPrompt }],
                 max_tokens: 50,
                 temperature: 0.1,
+                ...getOpenRouterModelOptions(modelId),
               }),
             })
           : await fetch(`${ollamaUrl}/api/chat`, {
@@ -576,6 +552,7 @@ export default function AISettingsModal({
 
     setIsGenerating(true);
     setGenerationProgress(0);
+    setGenerationStatus('Waiting for generated clues…');
 
     try {
       const useMockResponse = false;
@@ -682,9 +659,16 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           },
           body: JSON.stringify({
             model: modelId || 'gpt-oss-120b',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 4000,
+            messages: [
+              { role: 'system', content: systemMessage },
+              { role: 'user', content: prompt },
+            ],
+            max_tokens: 8000,
             temperature,
+            stream: true,
+            ...getOpenRouterModelOptions(modelId),
+            response_format: JEOPARDY_BOARD_RESPONSE_FORMAT,
+            provider: { require_parameters: true },
           }),
         },
         ollama: {
@@ -713,6 +697,11 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
 
       while (retries <= maxRetries) {
         try {
+          if (retries > 0) {
+            setGenerationProgress(0);
+            setGenerationStatus(`Starting generation attempt ${retries + 1}…`);
+          }
+
           const response = await fetch(apiEndpoints[aiProvider], {
             ...(apiConfigs[aiProvider] as RequestInit),
             mode: 'cors',
@@ -755,17 +744,23 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             throw new Error(`API request failed: ${response.status} ${response.statusText}`);
           }
 
-          let jsonContent: string;
-          if (aiProvider === 'ollama') {
-            // Stream the local model, driving the progress bar from real tokens.
-            jsonContent = await readStreamedContent(response, setGenerationProgress);
-          } else {
-            const data = await response.json();
-            jsonContent = data.choices?.[0]?.message?.content || '';
-          }
+          const jsonContent = await readGeneratedBoardStream(
+            response,
+            aiProvider,
+            ({ completedQuestions, totalQuestions, percent }) => {
+              setGenerationProgress(percent);
+              setGenerationStatus(
+                completedQuestions > 0
+                  ? `Generated ${completedQuestions} of ${totalQuestions} clues…`
+                  : 'Waiting for generated clues…',
+              );
+            },
+          );
 
           const candidate = extractJsonCandidate(jsonContent);
           const parsedData = candidate ? parseJsonCandidate(candidate) : { categories: buildFallbackCategories() };
+          setGenerationProgress(94);
+          setGenerationStatus('Checking board structure…');
           const savedAdjustmentsStr = localStorage.getItem('jeopardy_difficulty_adjustments');
           const savedAdjustments = savedAdjustmentsStr ? JSON.parse(savedAdjustmentsStr) : {};
 
@@ -820,6 +815,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           });
 
           formattedCategories = ensureBoardShape(formattedCategories);
+          setGenerationProgress(98);
+          setGenerationStatus('Checking clue quality…');
 
           // Guardrail: reject a board whose responses aren't proper Jeopardy
           // questions, whose clues leak the answer, or whose categories repeat —
@@ -838,6 +835,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             );
           }
 
+          setGenerationProgress(100);
+          setGenerationStatus('Board ready');
           onGeneratedCategories(formattedCategories);
           onClose();
           return;
@@ -853,6 +852,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           ) {
             retries++;
             if (retries <= maxRetries) {
+              setGenerationProgress(0);
+              setGenerationStatus(`Retrying generation after attempt ${retries}…`);
               await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retries)));
               continue;
             }
@@ -918,10 +919,19 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           <div className="gen-overlay">
             <div className="gen-overlay-inner">
               <h3 className="gen-title">Generating your board…</h3>
-              <div className="gen-progress-track">
+              <div
+                className="gen-progress-track"
+                role="progressbar"
+                aria-label="Board generation progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={generationProgress}
+                aria-valuetext={generationStatus}
+              >
                 <div className="gen-progress-fill" style={{ width: `${generationProgress}%` }} />
               </div>
               <div className="gen-progress-pct">{generationProgress}%</div>
+              <div className="gen-progress-status">{generationStatus}</div>
             </div>
           </div>
         )}
@@ -998,11 +1008,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             <div className="ai-field-group">
               <label className="ai-field-label">Model</label>
               <div className="model-chip-grid">
-                {([
-                  ['deepseek/deepseek-v4-flash', 'deepseek-v4-flash'],
-                  ['google/gemini-3.1-flash-lite', 'gemini-3.1-flash-lite'],
-                  ['z-ai/glm-5.2-flash', 'glm-5.2-flash'],
-                ] as const).map(([id, label]) => (
+                {OPENROUTER_MODELS.map(({ id, label }) => (
                   <button
                     key={id}
                     type="button"
