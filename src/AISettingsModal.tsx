@@ -8,8 +8,8 @@ import {
 } from './jeopardyDefaults';
 import { readGeneratedBoardStream } from './generationProgress';
 import {
+  getOpenRouterBoardResponseFormat,
   getOpenRouterModelOptions,
-  JEOPARDY_BOARD_RESPONSE_FORMAT,
   normalizeOpenRouterModelId,
   OPENROUTER_MODELS,
 } from './openRouterModels';
@@ -667,7 +667,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             temperature,
             stream: true,
             ...getOpenRouterModelOptions(modelId),
-            response_format: JEOPARDY_BOARD_RESPONSE_FORMAT,
+            response_format: getOpenRouterBoardResponseFormat(modelId),
             provider: { require_parameters: true },
           }),
         },
