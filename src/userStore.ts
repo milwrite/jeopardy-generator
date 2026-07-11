@@ -644,8 +644,16 @@ export class UserStore {
   }
 
   private async me(request: Request): Promise<Response> {
-    if (request.method !== 'GET') return methodNotAllowed(['GET']);
     const user = await this.requireUser(request);
+    if (request.method === 'DELETE') {
+      this.sql.exec('DELETE FROM users WHERE id = ?', user.id);
+      return jsonResponse(
+        { ok: true },
+        200,
+        { 'Set-Cookie': clearedSessionCookie() },
+      );
+    }
+    if (request.method !== 'GET') return methodNotAllowed(['GET', 'DELETE']);
     return jsonResponse({
       userId: user.id,
       username: user.username,
