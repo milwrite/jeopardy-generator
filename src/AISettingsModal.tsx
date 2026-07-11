@@ -14,7 +14,7 @@ import {
   OPENROUTER_MODELS,
 } from './openRouterModels';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
-import type { AIProvider, Category } from './jeopardyTypes';
+import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
 
 const DEFAULT_SYSTEM_MESSAGE =
   'Create a Jeopardy! game board. Return ONLY valid JSON — no markdown, no code fences, no commentary — in EXACTLY this shape:\n' +
@@ -28,7 +28,7 @@ const DEFAULT_SYSTEM_MESSAGE =
 
 interface AISettingsModalProps {
   onClose: () => void;
-  onGeneratedCategories: (categories: Category[]) => void;
+  onGeneratedCategories: (result: BoardGenerationResult) => void;
 }
 
 // A quick, fun standalone clue from OpenRouter (gemini) to entertain the player
@@ -325,6 +325,32 @@ export default function AISettingsModal({
   const [testCooldown, setTestCooldown] = useState(0);
   const [generateCooldown, setGenerateCooldown] = useState(0);
 
+  const buildGenerationMetadata = (resolvedModel?: string): BoardMetadata => {
+    const topics = categoryTopics.map((topic) => topic.trim()).filter(Boolean);
+    const requestedModel = aiProvider === 'openrouter' ? modelId.trim() : ollamaModel.trim();
+    const model = resolvedModel?.trim() || requestedModel;
+
+    return {
+      schemaVersion: 1,
+      source: 'generated',
+      provider: aiProvider,
+      model,
+      requestedModel,
+      ...(resolvedModel ? { resolvedModel: resolvedModel.trim() } : {}),
+      temperature,
+      ...(topics.length > 0 ? { topics } : {}),
+      generatedAt: new Date().toISOString(),
+    };
+  };
+
+  const buildGenerationResult = (
+    categories: Category[],
+    resolvedModel?: string,
+  ): BoardGenerationResult => ({
+    categories,
+    metadata: buildGenerationMetadata(resolvedModel),
+  });
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -555,11 +581,22 @@ export default function AISettingsModal({
     setGenerationStatus('Waiting for generated clues…');
 
     try {
-      const useMockResponse = false;
+      const useMockResponse = process.env.NEXT_PUBLIC_USE_MOCK_AI === 'true';
 
       if (useMockResponse) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        onGeneratedCategories(buildMockCategories());
+        const simulatedProgress = [
+          [12, 'Connecting to the model…'],
+          [34, 'Receiving categories…'],
+          [58, 'Receiving clues…'],
+          [82, 'Finishing the board…'],
+          [98, 'Checking clue quality…'],
+        ] as const;
+        for (const [progress, status] of simulatedProgress) {
+          setGenerationProgress(progress);
+          setGenerationStatus(status);
+          await new Promise((resolve) => setTimeout(resolve, 220));
+        }
+        onGeneratedCategories(buildGenerationResult(buildMockCategories()));
         onClose();
         return;
       }
@@ -744,7 +781,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             throw new Error(`API request failed: ${response.status} ${response.statusText}`);
           }
 
-          const jsonContent = await readGeneratedBoardStream(
+          const generatedStream = await readGeneratedBoardStream(
             response,
             aiProvider,
             ({ completedQuestions, totalQuestions, percent }) => {
@@ -756,6 +793,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
               );
             },
           );
+          const jsonContent = generatedStream.content;
 
           const candidate = extractJsonCandidate(jsonContent);
           const parsedData = candidate ? parseJsonCandidate(candidate) : { categories: buildFallbackCategories() };
@@ -837,7 +875,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
 
           setGenerationProgress(100);
           setGenerationStatus('Board ready');
-          onGeneratedCategories(formattedCategories);
+          onGeneratedCategories(buildGenerationResult(formattedCategories, generatedStream.model));
           onClose();
           return;
         } catch (error) {

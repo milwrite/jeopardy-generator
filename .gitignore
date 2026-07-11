@@ -6,6 +6,7 @@
 # Next.js
 /.next/
 /out/
+/.wrangler/
 
 # Production
 /build
@@ -13,6 +14,8 @@
 # Misc
 .DS_Store
 *.pem
+data/*.db-shm
+data/*.db-wal
 
 # Debug
 npm-debug.log*

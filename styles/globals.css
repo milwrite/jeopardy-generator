@@ -2088,6 +2088,16 @@ button:disabled {
   opacity: 0.7;
   padding: 0 4px;
 }
+.cloud-save-state {
+  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-size: 10px;
+  color: #7eb3f7;
+  white-space: nowrap;
+}
+.cloud-save-state--saving { color: #facc15; }
+.cloud-save-state--saved { color: #4ade80; }
+.cloud-save-state--error,
+.cloud-save-state--conflict { color: #f87171; }
 
 /* ─── Cloud Modal ─────────────────────────────────────────────────────── */
 
@@ -2209,6 +2219,24 @@ button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.cloud-modal-secondary {
+  font-family: var(--font-display, 'Barlow Condensed'), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 9px;
+  border: 1px solid #3a7bd5;
+  border-radius: 6px;
+  background: transparent;
+  color: #9fc5ff;
+  cursor: pointer;
+}
+.cloud-modal-secondary:hover:not(:disabled) { background: #0d2244; }
+.cloud-modal-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .cloud-modal-error {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
   font-size: 12px;
@@ -2248,6 +2276,10 @@ button:disabled {
   border-radius: 6px;
   gap: 12px;
 }
+.boards-list-item--active {
+  border-color: #ffd700;
+  box-shadow: inset 3px 0 0 #ffd700;
+}
 .boards-item-info {
   display: flex;
   flex-direction: column;
@@ -2258,6 +2290,14 @@ button:disabled {
   font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
   font-size: 13px;
   color: #c8dcff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.boards-item-meta {
+  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-size: 10px;
+  color: #7eb3f7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2294,6 +2334,16 @@ button:disabled {
   background: transparent;
 }
 .boards-btn-delete:hover { background: #2a0a0a; }
+
+@media (max-width: 520px) {
+  .boards-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .boards-item-info { width: 100%; }
+  .boards-item-actions { width: 100%; }
+  .boards-btn { flex: 1; }
+}
 
 /* ─── Password Strength & Requirements ───────────────────────────────── */
 

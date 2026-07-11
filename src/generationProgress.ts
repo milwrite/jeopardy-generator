@@ -11,6 +11,11 @@ export interface GenerationProgress {
   percent: number;
 }
 
+export interface GeneratedBoardStream {
+  content: string;
+  model?: string;
+}
+
 export function countCompletedQuestions(content: string): number {
   let bracketDepth = 0;
   let braceDepth = 0;
@@ -121,7 +126,7 @@ export async function readGeneratedBoardStream(
   response: Response,
   provider: StreamProvider,
   onProgress: (progress: GenerationProgress) => void,
-): Promise<string> {
+): Promise<GeneratedBoardStream> {
   const reader = response.body?.getReader();
   if (!reader) {
     throw new Error('The generation response did not include a readable body.');
@@ -131,6 +136,7 @@ export async function readGeneratedBoardStream(
   let content = '';
   let buffer = '';
   let rawResponse = '';
+  let resolvedModel: string | undefined;
   let lastCompletedQuestions = -1;
 
   const reportProgress = () => {
@@ -160,6 +166,10 @@ export async function readGeneratedBoardStream(
       const chunk = JSON.parse(payload);
       if (chunk?.error) {
         throw new Error(chunk.error.message || chunk.error || 'Generation stream failed.');
+      }
+
+      if (typeof chunk?.model === 'string' && chunk.model.trim()) {
+        resolvedModel = chunk.model.trim();
       }
 
       const nextContent = contentFromChunk(chunk, provider);
@@ -204,5 +214,5 @@ export async function readGeneratedBoardStream(
     throw new Error('The generation response did not contain board content.');
   }
 
-  return content;
+  return { content, ...(resolvedModel ? { model: resolvedModel } : {}) };
 }
