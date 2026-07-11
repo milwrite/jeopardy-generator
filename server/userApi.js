@@ -495,8 +495,15 @@ function createUserApi(options = {}) {
   }
 
   function me(req, res) {
-    if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
     const user = requireUser(req);
+    if (req.method === 'DELETE') {
+      db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+      return json(res, 200, { ok: true }, {
+        ...apiCorsHeaders(req),
+        'Set-Cookie': sessionCookie(req, '', 0),
+      });
+    }
+    if (req.method !== 'GET') return methodNotAllowed(res, ['GET', 'DELETE']);
     json(res, 200, {
       userId: user.id,
       username: user.username,

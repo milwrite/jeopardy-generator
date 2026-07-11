@@ -8,6 +8,8 @@ The Node server stores users, sessions, and boards in SQLite. It uses `JEOPARDY_
 
 Use `npm start` to exercise the same server that Railway runs. The integration test in `tests/server-user-api.test.js` starts that API with a temporary database and covers registration, cookies, ownership, generated metadata, revisions, stale writes, credential rejection, and logout.
 
+`GET /api/auth/me` returns the current account. `DELETE /api/auth/me` removes that account along with its sessions and boards through foreign-key cascades, then clears the browser cookie.
+
 ## Cloudflare Worker
 
 The Cloudflare deployment sends account and board requests to the `UserStore` Durable Object. Its SQLite database holds users, hashed session tokens, and each user's boards. The browser receives a random session token in a `Secure`, `HttpOnly`, `SameSite=Lax` cookie; SQLite stores only its SHA-256 hash and expiry.

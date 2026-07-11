@@ -130,6 +130,14 @@ test('Railway server registers users and keeps revision-safe owned boards', asyn
     });
     assert.equal(otherUsersBoard.status, 404);
 
+    const deleteBob = await request('/api/auth/me', {
+      method: 'DELETE',
+      headers: { Cookie: bobCookie },
+    });
+    assert.equal(deleteBob.status, 200);
+    const deletedBobSession = await request('/api/auth/me', { headers: { Cookie: bobCookie } });
+    assert.equal(deletedBobSession.status, 401);
+
     const logout = await request('/api/auth/logout', {
       method: 'POST',
       headers: { Cookie: aliceCookie },
