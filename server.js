@@ -3,6 +3,7 @@ const https = require('https');
 const path = require('path');
 const { URL } = require('url');
 const handler = require('serve-handler');
+const { createUserApi } = require('./server/userApi');
 
 const PORT = process.env.PORT || 3000;
 const OPENROUTER_API_KEY =
@@ -54,6 +55,10 @@ function proxyToOpenRouter(req, res) {
 
     upstreamReq.on('error', (err) => {
       console.error('OpenRouter proxy error:', err.message);
+      if (res.headersSent) {
+        res.destroy(err);
+        return;
+      }
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Proxy failed', message: err.message }));
     });
@@ -63,32 +68,78 @@ function proxyToOpenRouter(req, res) {
   });
 }
 
-const server = http.createServer((req, res) => {
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+function createAppServer(options = {}) {
+  const userApi = options.userApi || createUserApi(options.userApiOptions);
+  const publicDirectory = options.publicDirectory || path.join(__dirname, 'out');
 
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
+  const server = http.createServer((req, res) => {
+    const routeRequest = async () => {
+      let pathname;
+      try {
+        pathname = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Invalid request URL' }));
+        return;
+      }
 
-  const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
+      if (await userApi.handle(req, res, pathname)) return;
 
-  if (pathname === '/api/ai/chat' && req.method === 'POST') {
-    proxyToOpenRouter(req, res);
-    return;
-  }
+      if (pathname === '/api/ai/chat') {
+        const origin = req.headers.origin || '*';
+        for (const [name, value] of Object.entries(corsHeaders(origin))) {
+          res.setHeader(name, value);
+        }
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+        if (req.method === 'POST') {
+          proxyToOpenRouter(req, res);
+          return;
+        }
+        res.writeHead(405, {
+          'Content-Type': 'application/json; charset=utf-8',
+          Allow: 'POST, OPTIONS',
+        });
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+        return;
+      }
 
-  handler(req, res, { public: path.join(__dirname, 'out') }).catch((err) => {
-    console.error('Static handler error:', err);
-    res.writeHead(500);
-    res.end('Internal Server Error');
+      await handler(req, res, { public: publicDirectory });
+    };
+
+    routeRequest().catch((err) => {
+      console.error('Server request error:', err);
+      if (res.headersSent) {
+        res.destroy(err);
+        return;
+      }
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    });
   });
-});
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+  if (!options.userApi) {
+    server.on('close', () => userApi.close());
+  }
+  server.userApi = userApi;
+  return server;
+}
+
+if (require.main === module) {
+  const server = createAppServer();
+  server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}; user data: ${server.userApi.databasePath}`);
+  });
+
+  const shutdown = () => server.close(() => process.exit(0));
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+}
+
+module.exports = {
+  createAppServer,
+  proxyToOpenRouter,
+};

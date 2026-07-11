@@ -1,6 +1,16 @@
 # User and board storage
 
-The production Worker sends account and board requests to the `UserStore` Durable Object. Its SQLite database holds users, hashed session tokens, and each user's boards. The browser receives a random session token in a `Secure`, `HttpOnly`, `SameSite=Lax` cookie; SQLite stores only its SHA-256 hash and expiry.
+Jeopardy-LM ships the same account and board contract through both checked-in deployment runtimes. Railway runs `server.js` and stores data with `server/userApi.js`; the Cloudflare Worker sends the same routes to the `UserStore` Durable Object.
+
+## Railway
+
+The Node server stores users, sessions, and boards in SQLite. It uses `JEOPARDY_DB_PATH` when configured, then Railway's `RAILWAY_VOLUME_MOUNT_PATH`, then `/data` when that directory exists, and finally the local `data/jeopardy.db` file. Production must attach a Railway volume at `/data` so accounts and boards survive deploys and restarts.
+
+Use `npm start` to exercise the same server that Railway runs. The integration test in `tests/server-user-api.test.js` starts that API with a temporary database and covers registration, cookies, ownership, generated metadata, revisions, stale writes, credential rejection, and logout.
+
+## Cloudflare Worker
+
+The Cloudflare deployment sends account and board requests to the `UserStore` Durable Object. Its SQLite database holds users, hashed session tokens, and each user's boards. The browser receives a random session token in a `Secure`, `HttpOnly`, `SameSite=Lax` cookie; SQLite stores only its SHA-256 hash and expiry.
 
 Registration is limited to five attempts per source address per hour, while login is limited to twenty attempts per ten minutes. The API also applies request-size limits, generic login failures, and same-origin checks for every request that changes data.
 
