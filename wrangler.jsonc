@@ -5,5 +5,19 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS"
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "USER_STORE",
+        "class_name": "UserStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "user-store-v1",
+      "new_sqlite_classes": ["UserStore"]
+    }
+  ]
 }

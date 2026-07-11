@@ -23,14 +23,16 @@ export function verifyToken(token: string): JwtPayload | null {
 }
 
 export function setAuthCookie(res: NextApiResponse, token: string) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   res.setHeader('Set-Cookie', [
-    `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${30 * 24 * 3600}; SameSite=Lax`,
+    `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${30 * 24 * 3600}; SameSite=Lax; Priority=High${secure}`,
   ]);
 }
 
 export function clearAuthCookie(res: NextApiResponse) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   res.setHeader('Set-Cookie', [
-    `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`,
+    `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax; Priority=High${secure}`,
   ]);
 }
 
@@ -43,6 +45,7 @@ export function getAuthUser(req: NextApiRequest): JwtPayload | null {
 /** Shared validation used by both API and seed script */
 export function validatePassword(password: string): string | null {
   if (password.length < 8) return 'Password must be at least 8 characters';
+  if (password.length > 72) return 'Password must be 72 characters or fewer';
   if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
   if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
   return null;

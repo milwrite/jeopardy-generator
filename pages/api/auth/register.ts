@@ -16,10 +16,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: 'Username, email, and password are required' });
   }
 
-  const usernameError = validateUsername(username);
+  const normalizedUsername = username.trim();
+  const normalizedEmail = email.trim().toLowerCase();
+  const usernameError = validateUsername(normalizedUsername);
   if (usernameError) return res.status(400).json({ error: usernameError });
 
-  if (!validateEmail(email)) {
+  if (!validateEmail(normalizedEmail)) {
     return res.status(400).json({ error: 'Invalid email address' });
   }
 
@@ -28,19 +30,22 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const db = getDb();
 
-  const existingUsername = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  const existingUsername = db.prepare('SELECT id FROM users WHERE username = ?').get(normalizedUsername);
   if (existingUsername) return res.status(409).json({ error: 'Username already taken' });
 
-  const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
   if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
 
   const hash = bcrypt.hashSync(password, 12);
+  const now = new Date().toISOString();
   const result = db
-    .prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)')
-    .run(username, email.toLowerCase(), hash);
+    .prepare(
+      'INSERT INTO users (username, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    )
+    .run(normalizedUsername, normalizedEmail, hash, now, now);
   const userId = result.lastInsertRowid as number;
 
-  const token = signToken({ userId, username, isAdmin: false });
+  const token = signToken({ userId, username: normalizedUsername, isAdmin: false });
   setAuthCookie(res, token);
-  res.status(201).json({ userId, username, isAdmin: false });
+  res.status(201).json({ userId, username: normalizedUsername, email: normalizedEmail, isAdmin: false });
 }

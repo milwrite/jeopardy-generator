@@ -2,8 +2,22 @@
 // and proxies /api/ai/chat to OpenRouter using a runtime secret so the API key
 // never ships in the client bundle.
 
+export { UserStore } from './userStore';
+
+interface DurableObjectIdLike {}
+
+interface DurableObjectStubLike {
+  fetch(request: Request): Promise<Response>;
+}
+
+interface DurableObjectNamespaceLike {
+  idFromName(name: string): DurableObjectIdLike;
+  get(id: DurableObjectIdLike): DurableObjectStubLike;
+}
+
 export interface Env {
   ASSETS: { fetch: typeof fetch };
+  USER_STORE: DurableObjectNamespaceLike;
   OPENROUTER_API_KEY?: string;
   NEXT_PUBLIC_OPENROUTER_API_KEY?: string;
 }
@@ -11,9 +25,25 @@ export interface Env {
 function corsHeaders(origin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    Vary: 'Origin',
   };
+}
+
+function isUserBackendPath(pathname: string): boolean {
+  return pathname.startsWith('/api/auth/') ||
+    pathname === '/api/boards' ||
+    pathname.startsWith('/api/boards/');
+}
+
+function isMutation(method: string): boolean {
+  return method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+}
+
+function sameOriginRequest(request: Request, url: URL): boolean {
+  const origin = request.headers.get('Origin');
+  return !origin || origin === url.origin;
 }
 
 export default {
@@ -23,6 +53,18 @@ export default {
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(requestOrigin) });
+    }
+
+    if (isUserBackendPath(url.pathname)) {
+      if (isMutation(request.method) && !sameOriginRequest(request, url)) {
+        return new Response(JSON.stringify({ error: 'Cross-origin request rejected' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+        });
+      }
+
+      const objectId = env.USER_STORE.idFromName('primary');
+      return env.USER_STORE.get(objectId).fetch(request);
     }
 
     if (url.pathname === '/api/ai/chat' && request.method === 'POST') {

@@ -1,44 +1,56 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDb } from '../../../lib/db';
 import { getAuthUser } from '../../../lib/auth';
+import {
+  BoardConflictError,
+  BoardInputError,
+  deleteBoard,
+  getBoard,
+  updateBoard,
+} from '../../../lib/boards';
+import { getDb } from '../../../lib/db';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = getAuthUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
 
   const id = Number(req.query.id);
-  if (!id) return res.status(400).json({ error: 'Invalid id' });
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid board id' });
+  }
 
   const db = getDb();
-  const board = db
-    .prepare('SELECT * FROM boards WHERE id = ? AND user_id = ?')
-    .get(id, user.userId) as
-    | { id: number; user_id: number; name: string; board_data: string; created_at: string; updated_at: string }
-    | undefined;
 
-  if (!board) return res.status(404).json({ error: 'Board not found' });
+  try {
+    if (req.method === 'GET') {
+      const board = getBoard(db, user.userId, id, true);
+      return board
+        ? res.status(200).json(board)
+        : res.status(404).json({ error: 'Board not found' });
+    }
 
-  if (req.method === 'GET') {
-    return res.status(200).json({
-      ...board,
-      board_data: JSON.parse(board.board_data),
-    });
+    if (req.method === 'PUT' || req.method === 'PATCH') {
+      const board = updateBoard(db, user.userId, id, req.body || {});
+      return board
+        ? res.status(200).json(board)
+        : res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (req.method === 'DELETE') {
+      return deleteBoard(db, user.userId, id)
+        ? res.status(200).json({ ok: true })
+        : res.status(404).json({ error: 'Board not found' });
+    }
+  } catch (error) {
+    if (error instanceof BoardConflictError) {
+      return res.status(error.status).json({ error: error.message, current: error.current });
+    }
+    if (error instanceof BoardInputError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('Board request failed', error);
+    return res.status(500).json({ error: 'Board storage is temporarily unavailable.' });
   }
 
-  if (req.method === 'PUT') {
-    const { name, board_data } = req.body as { name?: string; board_data?: unknown };
-    const newName = name ?? board.name;
-    const newData = board_data ? JSON.stringify(board_data) : board.board_data;
-    db.prepare(
-      "UPDATE boards SET name = ?, board_data = ?, updated_at = datetime('now') WHERE id = ?"
-    ).run(newName, newData, id);
-    return res.status(200).json({ id, name: newName });
-  }
-
-  if (req.method === 'DELETE') {
-    db.prepare('DELETE FROM boards WHERE id = ?').run(id);
-    return res.status(200).json({ ok: true });
-  }
-
-  res.status(405).end();
+  res.setHeader('Allow', ['GET', 'PUT', 'PATCH', 'DELETE']);
+  return res.status(405).json({ error: 'Method not allowed' });
 }

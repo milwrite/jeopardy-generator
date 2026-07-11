@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDb } from '../../../lib/db';
 import { getAuthUser } from '../../../lib/auth';
+import { BoardInputError, createBoard, listBoards } from '../../../lib/boards';
+import { getDb } from '../../../lib/db';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = getAuthUser(req);
@@ -8,28 +9,23 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const db = getDb();
 
-  if (req.method === 'GET') {
-    const boards = db
-      .prepare(
-        'SELECT id, name, created_at, updated_at FROM boards WHERE user_id = ? ORDER BY updated_at DESC'
-      )
-      .all(user.userId);
-    return res.status(200).json(boards);
-  }
-
-  if (req.method === 'POST') {
-    const { name, board_data } = req.body as { name?: string; board_data?: unknown };
-    if (!name || !board_data) {
-      return res.status(400).json({ error: 'name and board_data required' });
+  try {
+    if (req.method === 'GET') {
+      return res.status(200).json(listBoards(db, user.userId));
     }
-    const dataStr = JSON.stringify(board_data);
-    const result = db
-      .prepare(
-        'INSERT INTO boards (user_id, name, board_data) VALUES (?, ?, ?)'
-      )
-      .run(user.userId, name, dataStr);
-    return res.status(201).json({ id: result.lastInsertRowid, name });
+
+    if (req.method === 'POST') {
+      const board = createBoard(db, user.userId, req.body || {});
+      return res.status(201).json(board);
+    }
+  } catch (error) {
+    if (error instanceof BoardInputError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('Board collection request failed', error);
+    return res.status(500).json({ error: 'Board storage is temporarily unavailable.' });
   }
 
-  res.status(405).end();
+  res.setHeader('Allow', ['GET', 'POST']);
+  return res.status(405).json({ error: 'Method not allowed' });
 }

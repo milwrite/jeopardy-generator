@@ -1,12 +1,84 @@
 import dynamic from 'next/dynamic';
-import React, { useCallback, memo, useEffect, useState } from 'react';
+import React, { useCallback, memo, useEffect, useRef, useState } from 'react';
 
+import { apiFetch } from './apiClient';
 import { initializeCategories, initializePlayers } from './jeopardyDefaults';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import FinalJeopardy from './FinalJeopardy';
-import type { Category, GameState, IncorrectPlayers, Player, Question, Rating } from './jeopardyTypes';
+import type {
+  BoardGenerationResult,
+  BoardMetadata,
+  Category,
+  GameState,
+  IncorrectPlayers,
+  Player,
+  Question,
+  Rating,
+  StoredBoard,
+  StoredBoardSummary,
+} from './jeopardyTypes';
 
 const AISettingsModal = dynamic(() => import('./AISettingsModal'));
+
+interface ActiveBoard extends StoredBoardSummary {
+  savedSnapshot: string;
+}
+
+type BoardSaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
+
+const DEFAULT_BOARD_METADATA: BoardMetadata = {
+  schemaVersion: 1,
+  source: 'manual',
+};
+
+function gameStateSnapshot(gameState: GameState): string {
+  return JSON.stringify(gameState);
+}
+
+function boardData(gameState: GameState) {
+  return {
+    gameState,
+    version: '2.0',
+  };
+}
+
+function boardWriteBody(
+  name: string,
+  gameState: GameState,
+  metadata: BoardMetadata,
+  expectedRevision?: number,
+) {
+  return {
+    name,
+    board_data: boardData(gameState),
+    source: metadata.source,
+    ai_provider: metadata.provider || null,
+    ai_model: metadata.model || null,
+    metadata,
+    schema_version: metadata.schemaVersion,
+    ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
+  };
+}
+
+function suggestedBoardName(metadata: BoardMetadata): string {
+  if (metadata.source === 'generated' && metadata.topics?.length) {
+    return `${metadata.topics.slice(0, 2).join(' & ')} Jeopardy`;
+  }
+  if (metadata.source === 'imported') return 'Imported Board';
+  if (metadata.source === 'generated') {
+    return `Generated Board ${new Date().toLocaleDateString()}`;
+  }
+  return 'My Jeopardy Board';
+}
+
+async function responseError(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string };
+    return body.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;
@@ -43,6 +115,15 @@ const QuestionCell = memo(function QuestionCell({
     <div
       className={`question-cell ${question.answered ? 'answered' : ''} ${showEditor ? 'editable' : ''} ${question.dailyDouble && question.revealed ? 'daily-double' : ''}`}
       onClick={() => showEditor ? onEdit(categoryIndex, questionIndex) : onSelect(categoryIndex, questionIndex)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          showEditor ? onEdit(categoryIndex, questionIndex) : onSelect(categoryIndex, questionIndex);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${category.title} for $${question.value}${question.answered ? ', answered' : ''}`}
     >
       <div className="question-value-container">
         {question.answered && !showEditor ? '' : (
@@ -100,7 +181,11 @@ export default function JeopardyGame() {
   } | null>(null);
   
   // Auth + boards state
-  const [authUser, setAuthUser] = useState<{userId: number; username: string} | null>(null);
+  const [authUser, setAuthUser] = useState<{
+    userId: number;
+    username: string;
+    email?: string | null;
+  } | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authUsername, setAuthUsername] = useState('');
@@ -110,20 +195,129 @@ export default function JeopardyGame() {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [showBoards, setShowBoards] = useState(false);
-  const [boards, setBoards] = useState<{id: number; name: string; updated_at: string}[]>([]);
+  const [boards, setBoards] = useState<StoredBoardSummary[]>([]);
   const [boardsLoading, setBoardsLoading] = useState(false);
   const [saveBoardName, setSaveBoardName] = useState('');
   const [showSaveBoard, setShowSaveBoard] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [activeBoard, setActiveBoard] = useState<ActiveBoard | null>(null);
+  const [draftMetadata, setDraftMetadata] = useState<BoardMetadata>(DEFAULT_BOARD_METADATA);
+  const [boardSaveState, setBoardSaveState] = useState<BoardSaveState>('idle');
+  const [pendingGeneratedSave, setPendingGeneratedSave] = useState(false);
+  const activeBoardRef = useRef<ActiveBoard | null>(null);
+  const saveInFlightRef = useRef(false);
 
   // Player management state
   const [showPlayerSettings, setShowPlayerSettings] = useState(false);
   const [editingPlayers, setEditingPlayers] = useState<Player[]>([]);
   const [tempPlayerCount, setTempPlayerCount] = useState(playerCount);
-  
+
+  useEffect(() => {
+    activeBoardRef.current = activeBoard;
+  }, [activeBoard]);
+
+  const applyGameState = useCallback((nextState: GameState) => {
+    setGameState(nextState);
+    setSelectedQuestion(null);
+    setShowAnswer(false);
+    setIncorrectPlayers({});
+    setDailyDoubleWager(null);
+    setShowDailyDoubleWager(false);
+  }, []);
+
+  const rememberBoard = useCallback((board: StoredBoardSummary) => {
+    setBoards((current) => {
+      const remaining = current.filter(({ id }) => id !== board.id);
+      return [board, ...remaining].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    });
+  }, []);
+
+  const activateStoredBoard = useCallback((board: StoredBoard, state: GameState) => {
+    const { board_data: _boardData, ...summary } = board;
+    setActiveBoard({ ...summary, savedSnapshot: gameStateSnapshot(state) });
+    setDraftMetadata(board.metadata);
+    setPendingGeneratedSave(false);
+    rememberBoard(summary);
+  }, [rememberBoard]);
+
+  const createStoredBoard = useCallback(async (
+    name: string,
+    state: GameState,
+    metadata: BoardMetadata,
+  ): Promise<StoredBoard | null> => {
+    if (saveInFlightRef.current) return null;
+    saveInFlightRef.current = true;
+    setBoardSaveState('saving');
+    try {
+      const response = await apiFetch('/api/boards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(boardWriteBody(name, state, metadata)),
+      });
+      if (!response.ok) {
+        setSaveStatus(await responseError(response, 'Failed to save board'));
+        setBoardSaveState('error');
+        return null;
+      }
+
+      const board = (await response.json()) as StoredBoard;
+      activateStoredBoard(board, state);
+      setBoardSaveState('saved');
+      setSaveStatus('Saved');
+      return board;
+    } catch {
+      setSaveStatus('Board storage is unavailable');
+      setBoardSaveState('error');
+      return null;
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  }, [activateStoredBoard]);
+
+  const persistActiveBoard = useCallback(async (
+    name: string,
+    state: GameState,
+    metadata: BoardMetadata,
+  ): Promise<StoredBoard | null> => {
+    const current = activeBoardRef.current;
+    if (!current || saveInFlightRef.current) return null;
+
+    saveInFlightRef.current = true;
+    setBoardSaveState('saving');
+    try {
+      const response = await apiFetch(`/api/boards/${current.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(boardWriteBody(name, state, metadata, current.revision)),
+      });
+      if (response.status === 409) {
+        setSaveStatus(await responseError(response, 'This board changed in another session'));
+        setBoardSaveState('conflict');
+        return null;
+      }
+      if (!response.ok) {
+        setSaveStatus(await responseError(response, 'Failed to update board'));
+        setBoardSaveState('error');
+        return null;
+      }
+
+      const board = (await response.json()) as StoredBoard;
+      activateStoredBoard(board, state);
+      setBoardSaveState('saved');
+      setSaveStatus('Saved');
+      return board;
+    } catch {
+      setSaveStatus('Board storage is unavailable');
+      setBoardSaveState('error');
+      return null;
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  }, [activateStoredBoard]);
+
   // Check session on mount
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+    apiFetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
       if (data) setAuthUser(data);
     }).catch(() => {});
   }, []);
@@ -137,9 +331,12 @@ export default function JeopardyGame() {
         setAuthError('Passwords do not match');
         return;
       }
-      const strength = getPasswordStrength(authPassword);
-      if (strength.score < 2) {
-        setAuthError('Password is too weak — add uppercase letters, numbers, or symbols');
+      if (
+        authPassword.length < 8 ||
+        !/[A-Z]/.test(authPassword) ||
+        !/[0-9]/.test(authPassword)
+      ) {
+        setAuthError('Password must have at least 8 characters, one uppercase letter, and one number');
         return;
       }
     }
@@ -150,7 +347,7 @@ export default function JeopardyGame() {
         ? { login: authUsername, password: authPassword }
         : { username: authUsername, email: authEmail, password: authPassword };
 
-      const res = await fetch(`/api/auth/${authMode}`, {
+      const res = await apiFetch(`/api/auth/${authMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -163,6 +360,11 @@ export default function JeopardyGame() {
       setAuthEmail('');
       setAuthPassword('');
       setAuthPasswordConfirm('');
+      if (pendingGeneratedSave && !activeBoard) {
+        const boardName = suggestedBoardName(draftMetadata);
+        await createStoredBoard(boardName, gameState, draftMetadata);
+        setPendingGeneratedSave(false);
+      }
     } catch {
       setAuthError('Network error');
     } finally {
@@ -171,16 +373,19 @@ export default function JeopardyGame() {
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await apiFetch('/api/auth/logout', { method: 'POST' });
     setAuthUser(null);
+    setActiveBoard(null);
+    setBoardSaveState('idle');
+    setPendingGeneratedSave(false);
     setShowBoards(false);
   };
 
   const loadBoards = async () => {
     setBoardsLoading(true);
     try {
-      const res = await fetch('/api/boards');
-      if (res.ok) setBoards(await res.json());
+      const res = await apiFetch('/api/boards');
+      if (res.ok) setBoards((await res.json()) as StoredBoardSummary[]);
     } finally {
       setBoardsLoading(false);
     }
@@ -192,44 +397,93 @@ export default function JeopardyGame() {
   };
 
   const loadBoard = async (id: number) => {
-    const res = await fetch(`/api/boards/${id}`);
+    const res = await apiFetch(`/api/boards/${id}`);
     if (!res.ok) return;
-    const data = await res.json();
+    const data = (await res.json()) as StoredBoard;
     const gs = data.board_data?.gameState;
     if (gs) {
-      setGameState(gs);
-      setSelectedQuestion(null);
-      setShowAnswer(false);
+      activateStoredBoard(data, gs);
+      applyGameState(gs);
+      setBoardSaveState('saved');
+      setSaveStatus('Saved');
       setShowBoards(false);
     }
   };
 
   const deleteBoard = async (id: number) => {
-    await fetch(`/api/boards/${id}`, { method: 'DELETE' });
-    setBoards(prev => prev.filter(b => b.id !== id));
+    const response = await apiFetch(`/api/boards/${id}`, { method: 'DELETE' });
+    if (!response.ok) return;
+    setBoards((current) => current.filter((board) => board.id !== id));
+    if (activeBoardRef.current?.id === id) {
+      setActiveBoard(null);
+      setBoardSaveState('idle');
+    }
   };
 
-  const saveBoard = async () => {
+  const openSaveDialog = () => {
+    setSaveBoardName(activeBoard?.name || suggestedBoardName(draftMetadata));
+    setSaveStatus(null);
+    setShowSaveBoard(true);
+  };
+
+  const saveBoard = async (asCopy = false) => {
     if (!saveBoardName.trim()) return;
     setSaveStatus(null);
-    const res = await fetch('/api/boards', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: saveBoardName.trim(),
-        board_data: {
-          gameState,
-          version: '1.0',
-          date: new Date().toISOString(),
-        },
-      }),
-    });
-    if (res.ok) {
-      setSaveStatus('Saved!');
-      setSaveBoardName('');
-      setTimeout(() => { setShowSaveBoard(false); setSaveStatus(null); }, 1200);
+    const board = activeBoard && !asCopy
+      ? await persistActiveBoard(saveBoardName.trim(), gameState, draftMetadata)
+      : await createStoredBoard(saveBoardName.trim(), gameState, draftMetadata);
+
+    if (board) {
+      setPendingGeneratedSave(false);
+      setTimeout(() => {
+        setShowSaveBoard(false);
+        setSaveStatus(null);
+      }, 700);
+    }
+  };
+
+  useEffect(() => {
+    if (!authUser || !activeBoard) return;
+    if (boardSaveState === 'error' || boardSaveState === 'conflict') return;
+
+    const snapshot = gameStateSnapshot(gameState);
+    if (snapshot === activeBoard.savedSnapshot) return;
+
+    const timeout = window.setTimeout(() => {
+      if (saveInFlightRef.current) return;
+      void persistActiveBoard(activeBoard.name, gameState, draftMetadata);
+    }, 900);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    activeBoard,
+    authUser,
+    boardSaveState,
+    draftMetadata,
+    gameState,
+    persistActiveBoard,
+  ]);
+
+  const handleGeneratedBoard = ({ categories, metadata }: BoardGenerationResult) => {
+    const nextState: GameState = {
+      ...gameState,
+      categories,
+      finalJeopardyActive: false,
+    };
+
+    setActiveBoard(null);
+    setDraftMetadata(metadata);
+    setBoardSaveState('idle');
+    setSaveStatus(null);
+    applyGameState(nextState);
+
+    if (authUser) {
+      setPendingGeneratedSave(false);
+      void createStoredBoard(suggestedBoardName(metadata), nextState, metadata).then((stored) => {
+        if (!stored) setPendingGeneratedSave(true);
+      });
     } else {
-      setSaveStatus('Failed to save');
+      setPendingGeneratedSave(true);
     }
   };
 
@@ -673,14 +927,17 @@ export default function JeopardyGame() {
   // Reset the game
   const resetGame = () => {
     if (window.confirm("Are you sure you want to reset the game? All progress will be lost.")) {
-      setGameState({
+      const resetState: GameState = {
         categories: initializeCategories(),
         players: initializePlayers(playerCount),
         currentPlayer: 0,
         finalJeopardyActive: false
-      });
-      setSelectedQuestion(null);
-      setShowAnswer(false);
+      };
+      setActiveBoard(null);
+      setDraftMetadata(DEFAULT_BOARD_METADATA);
+      setPendingGeneratedSave(false);
+      setBoardSaveState('idle');
+      applyGameState(resetState);
     }
   };
   
@@ -793,12 +1050,11 @@ export default function JeopardyGame() {
         const confirmMessage = `Import "${importedData.name || 'Unnamed Board'}"?\n\nThis will replace your current game board and all progress will be lost.`;
         
         if (window.confirm(confirmMessage)) {
-          setGameState(importedData.gameState);
-          setSelectedQuestion(null);
-          setShowAnswer(false);
-          setIncorrectPlayers({});
-          setDailyDoubleWager(null);
-          setShowDailyDoubleWager(false);
+          setActiveBoard(null);
+          setDraftMetadata({ schemaVersion: 1, source: 'imported' });
+          setPendingGeneratedSave(false);
+          setBoardSaveState('idle');
+          applyGameState(importedData.gameState as GameState);
           console.log('Game board imported successfully');
         }
       } catch (error) {
@@ -932,7 +1188,17 @@ export default function JeopardyGame() {
             {authUser ? (
               <>
                 <button className="cloud-btn" onClick={openBoards}>My Boards</button>
-                <button className="cloud-btn" onClick={() => setShowSaveBoard(true)}>Save</button>
+                <button className="cloud-btn" onClick={openSaveDialog}>
+                  {activeBoard ? 'Save / Rename' : 'Save'}
+                </button>
+                {activeBoard && (
+                  <span className={`cloud-save-state cloud-save-state--${boardSaveState}`}>
+                    {boardSaveState === 'saving' && 'Saving…'}
+                    {boardSaveState === 'saved' && 'Saved'}
+                    {boardSaveState === 'error' && 'Save failed'}
+                    {boardSaveState === 'conflict' && 'Reload needed'}
+                  </span>
+                )}
                 <span className="cloud-username">{authUser.username}</span>
                 <button className="cloud-btn cloud-btn-logout" onClick={handleLogout}>Sign Out</button>
               </>
@@ -957,12 +1223,7 @@ export default function JeopardyGame() {
         {showSettings && (
           <AISettingsModal
             onClose={() => setShowSettings(false)}
-            onGeneratedCategories={(categories) => {
-              setGameState((currentState) => ({
-                ...currentState,
-                categories,
-              }));
-            }}
+            onGeneratedCategories={handleGeneratedBoard}
           />
         )}
         
@@ -1385,17 +1646,26 @@ export default function JeopardyGame() {
             {boardsLoading ? (
               <p className="cloud-modal-note">Loading…</p>
             ) : boards.length === 0 ? (
-              <p className="cloud-modal-note">No saved boards yet. Use &ldquo;Save Board&rdquo; to save your current board.</p>
+              <p className="cloud-modal-note">No saved boards yet. Save the current board to add it here.</p>
             ) : (
               <ul className="boards-list">
                 {boards.map(b => (
-                  <li key={b.id} className="boards-list-item">
+                  <li key={b.id} className={`boards-list-item${activeBoard?.id === b.id ? ' boards-list-item--active' : ''}`}>
                     <div className="boards-item-info">
                       <span className="boards-item-name">{b.name}</span>
-                      <span className="boards-item-date">{new Date(b.updated_at).toLocaleDateString()}</span>
+                      <span className="boards-item-meta">
+                        {b.source === 'generated' ? 'Generated' : b.source === 'imported' ? 'Imported' : 'Manual'}
+                        {b.ai_model ? ` · ${b.ai_model}` : ''}
+                      </span>
+                      <span className="boards-item-date">
+                        Updated {new Date(b.updated_at).toLocaleString()}
+                        {` · revision ${b.revision}`}
+                      </span>
                     </div>
                     <div className="boards-item-actions">
-                      <button className="boards-btn boards-btn-load" onClick={() => loadBoard(b.id)}>Load</button>
+                      <button className="boards-btn boards-btn-load" onClick={() => loadBoard(b.id)}>
+                        {activeBoard?.id === b.id ? 'Reload' : 'Load'}
+                      </button>
                       <button className="boards-btn boards-btn-delete" onClick={() => deleteBoard(b.id)}>Delete</button>
                     </div>
                   </li>
@@ -1411,7 +1681,7 @@ export default function JeopardyGame() {
         <div className="cloud-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowSaveBoard(false); }}>
           <div className="cloud-modal">
             <button className="cloud-modal-close" onClick={() => setShowSaveBoard(false)}>&#x2715;</button>
-            <h2 className="cloud-modal-title">Save Board</h2>
+            <h2 className="cloud-modal-title">{activeBoard ? 'Save Board' : 'Save New Board'}</h2>
             <div className="cloud-modal-form">
               <input
                 className="cloud-modal-input"
@@ -1419,13 +1689,23 @@ export default function JeopardyGame() {
                 placeholder="Board name…"
                 value={saveBoardName}
                 onChange={(e) => setSaveBoardName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && saveBoard()}
+                onKeyDown={(e) => e.key === 'Enter' && void saveBoard(false)}
                 autoFocus
               />
-              {saveStatus && <p className={`cloud-modal-note${saveStatus === 'Saved!' ? ' cloud-modal-note--success' : ' cloud-modal-error'}`}>{saveStatus}</p>}
-              <button className="cloud-modal-submit" onClick={saveBoard} disabled={!saveBoardName.trim()}>
-                Save
+              {activeBoard && (
+                <p className="cloud-modal-note">
+                  Changes to this board save automatically. Rename it here or save a separate copy.
+                </p>
+              )}
+              {saveStatus && <p className={`cloud-modal-note${saveStatus === 'Saved' ? ' cloud-modal-note--success' : ' cloud-modal-error'}`}>{saveStatus}</p>}
+              <button className="cloud-modal-submit" onClick={() => void saveBoard(false)} disabled={!saveBoardName.trim() || boardSaveState === 'saving'}>
+                {activeBoard ? 'Save changes' : 'Save board'}
               </button>
+              {activeBoard && (
+                <button className="cloud-modal-secondary" onClick={() => void saveBoard(true)} disabled={!saveBoardName.trim() || boardSaveState === 'saving'}>
+                  Save as copy
+                </button>
+              )}
             </div>
           </div>
         </div>
