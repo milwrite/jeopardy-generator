@@ -157,14 +157,13 @@ button:disabled {
   display: flex;
   justify-content: center;
   align-items: stretch;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* larger buttons flow to a second row instead of clipping behind a scrollbar */
   gap: 10px;
   margin-bottom: 12px;
   padding: 10px 14px;
   background: rgba(0, 0, 0, 0.22);
   border-radius: 10px;
   border: 1px solid rgba(255, 215, 0, 0.12);
-  overflow-x: auto;
 }
 
 .primary-controls {
@@ -188,9 +187,9 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 38px;
-  padding: 0 14px;
-  font-size: 1.00rem;
+  height: 46px;
+  padding: 0 18px;
+  font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -690,8 +689,6 @@ button:disabled {
   text-align: center;
   padding: 5px;
   margin: 0 0 3px;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
   font-size: 1.38rem;
   white-space: nowrap;
   overflow: hidden;

@@ -64,6 +64,16 @@ function proxyToOpenRouter(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  // Never let the CDN cache error responses: a 404 cached during a deploy
+  // window would keep serving 404 for a hashed asset long after it exists.
+  const origWriteHead = res.writeHead.bind(res);
+  res.writeHead = (status, ...rest) => {
+    if (status >= 400) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+    return origWriteHead(status, ...rest);
+  };
+
   const origin = req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');

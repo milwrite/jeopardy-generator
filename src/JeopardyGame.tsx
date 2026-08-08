@@ -6,7 +6,7 @@ import { logBadResponse, validateQuestionRule } from './questionValidation';
 import FinalJeopardy from './FinalJeopardy';
 import type { Category, GameState, IncorrectPlayers, Player, Question, Rating } from './jeopardyTypes';
 
-const AISettingsModal = dynamic(() => import('./AISettingsModal'));
+const AISettingsModal = dynamic(() => import(/* webpackChunkName: "ai-settings" */ './AISettingsModal'));
 
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
   let score = 0;

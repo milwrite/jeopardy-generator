@@ -873,7 +873,14 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
   };
 
   // Auto-detect the local model server + adapter, so users never touch endpoints.
+  // Only probe while the local provider is selected: on the deployed site this
+  // URL points at the visitor's own machine, and browsers block public sites
+  // from reaching localhost (CORS / Local Network Access).
   useEffect(() => {
+    if (aiProvider !== 'ollama') {
+      setServerStatus('checking');
+      return;
+    }
     let active = true;
     const check = async () => {
       try {
@@ -889,7 +896,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
     check();
     const id = setInterval(check, 5000);
     return () => { active = false; clearInterval(id); };
-  }, [ollamaUrl, ollamaModel]);
+  }, [aiProvider, ollamaUrl, ollamaModel]);
 
   const statusStyle = {
     padding: '10px 14px', borderRadius: 8, marginBottom: 18, fontSize: 18,
@@ -929,17 +936,17 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         <div className="provider-tabs" style={{ marginBottom: 14 }}>
           <button
             type="button"
-            className={`provider-tab${aiProvider === 'ollama' ? ' active' : ''}`}
-            onClick={() => { setAiProvider('ollama'); setTestResult(null); }}
-          >
-            Local
-          </button>
-          <button
-            type="button"
             className={`provider-tab${aiProvider === 'openrouter' ? ' active' : ''}`}
             onClick={() => { setAiProvider('openrouter'); setTestResult(null); }}
           >
             External
+          </button>
+          <button
+            type="button"
+            className={`provider-tab${aiProvider === 'ollama' ? ' active' : ''}`}
+            onClick={() => { setAiProvider('ollama'); setTestResult(null); }}
+          >
+            Local
           </button>
         </div>
 
