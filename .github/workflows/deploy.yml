@@ -27,6 +27,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          GITHUB_PAGES: 'true'
 
       - name: Add .nojekyll file
         run: touch out/.nojekyll
