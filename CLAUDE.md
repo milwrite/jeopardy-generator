@@ -57,7 +57,7 @@ The game uses React's `useState` with complex state objects:
 
 ### GitHub Pages
 - Automatic deployment configured via GitHub Actions
-- Deploys to `https://zmuhls.github.io/jeopardy-lm/`
+- Deploys to `https://milwrite.github.io/jeopardy-generator/`
 
 ## Development Notes
 
