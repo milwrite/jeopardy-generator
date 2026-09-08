@@ -12,7 +12,7 @@ async function save(env:SuiteEnv,request:Request,identity:Identity,id:string,inp
 }
 export default {fetch(request:Request,env:SuiteEnv){return suite(request,env,async(req,identity)=>{
  const path=new URL(req.url).pathname;
- if(path==='/import'){if(!identity)return Response.redirect(env.PUBLIC_ORIGIN+'/auth/start?next=/import',302);return new Response(importPage,{headers:{'content-type':'text/html','cache-control':'no-store'}});}
+ if(path==='/import'){if(!identity)return Response.redirect(env.PUBLIC_ORIGIN+'/auth/start?next=/import',302);return new Response(importPage,{headers:{'content-type':'text/html','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",'referrer-policy':'no-referrer'}});}
  if(path==='/api/import/legacy'&&req.method==='POST'){if(!identity)return json({error:'CUNY Login required'},401);return importLegacy(req,env,identity,await boundedBody(req),(id,input)=>save(env,req,identity,id,input));}
  if(path==='/api/boards'||path.startsWith('/api/boards/')){
   if(!identity)return json({error:'CUNY Login required'},401);

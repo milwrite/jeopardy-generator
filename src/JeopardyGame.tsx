@@ -1150,7 +1150,8 @@ export default function JeopardyGame() {
     
     setGameState({
       ...gameState,
-      finalJeopardyActive: true
+      finalJeopardyActive: true,
+      finalRound: undefined
     });
   };
   

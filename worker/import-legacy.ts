@@ -20,5 +20,5 @@ export async function importLegacy(request:Request,env:SuiteEnv,identity:Identit
    const board:any=await detail.json();const result=await save(id,{...board,expected_revision:0,legacy:{origin:env.LEGACY_ORIGIN,boardId:summary.id,createdAt:board.created_at,updatedAt:board.updated_at}});if(result.ok)imported++;else failed++;
   }
   return json({imported,existing,failed});
- }finally{await fetch(env.LEGACY_ORIGIN+'/api/auth/logout',{method:'POST',headers:{cookie,origin:env.LEGACY_ORIGIN}});}
+ }finally{await fetch(env.LEGACY_ORIGIN+'/api/auth/logout',{method:'POST',headers:{cookie,origin:env.LEGACY_ORIGIN}}).catch(()=>{});}
 }
