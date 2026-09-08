@@ -1047,7 +1047,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
                     id="personal-api-key"
                     type="password"
                     value={apiKey}
-                    onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
+                    onChange={(event) => { setShowKeyInput(true); setApiKey(event.target.value); setTestResult(null); }}
                     placeholder="sk-or-..."
                     className="ai-input"
                   />
