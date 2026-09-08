@@ -1,3 +1,7 @@
+export const WORKERS_AI_MODEL = '@cf/google/gemma-4-26b-a4b-it';
+export const WORKERS_AI_MODELS = [{id:WORKERS_AI_MODEL,label:'Gemma 4 · Workers AI'}];
+export const isHostedSuite = () => typeof window !== 'undefined' && window.location.hostname.endsWith('.ailab-452.workers.dev');
+
 export const OPENROUTER_MODELS = [
   { id: 'deepseek/deepseek-v4-flash', label: 'deepseek-v4-flash' },
   { id: 'google/gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite' },
@@ -18,13 +22,14 @@ export function normalizeOpenRouterModelId(modelId: string): string {
 }
 
 export function getOpenRouterModelOptions(modelId: string) {
+  if(modelId.startsWith('@cf/'))return {chat_template_kwargs:{enable_thinking:false}};
   return MODELS_WITH_OPTIONAL_REASONING.has(normalizeOpenRouterModelId(modelId))
     ? { reasoning: { effort: 'none' as const } }
     : {};
 }
 
 export function getOpenRouterBoardResponseFormat(modelId: string) {
-  return normalizeOpenRouterModelId(modelId) === 'google/gemini-3.1-flash-lite'
+  return (modelId.startsWith('@cf/') || normalizeOpenRouterModelId(modelId) === 'google/gemini-3.1-flash-lite')
     ? { type: 'json_object' as const }
     : JEOPARDY_BOARD_RESPONSE_FORMAT;
 }

@@ -49,7 +49,7 @@ export type BoardSource = 'manual' | 'generated' | 'imported';
 export interface BoardMetadata {
   schemaVersion: number;
   source: BoardSource;
-  provider?: AIProvider;
+  provider?: AIProvider | 'workers-ai';
   model?: string;
   requestedModel?: string;
   resolvedModel?: string;

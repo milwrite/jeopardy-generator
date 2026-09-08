@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import {WORKERS_AI_MODEL,isHostedSuite,getOpenRouterModelOptions} from './openRouterModels';
 import type { Player } from './jeopardyTypes';
 
 export interface FJClue {
@@ -34,7 +35,8 @@ async function generateFinalClue(): Promise<FJClue> {
             }),
       },
       body: JSON.stringify({
-        model: g('jeopardy_model_id', 'google/gemini-3.1-flash-lite'),
+        model: useProxy && isHostedSuite() ? WORKERS_AI_MODEL : g('jeopardy_model_id', 'google/gemini-3.1-flash-lite'),
+        ...getOpenRouterModelOptions(useProxy && isHostedSuite()?WORKERS_AI_MODEL:g('jeopardy_model_id')),
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 300,
         temperature: 0.6,

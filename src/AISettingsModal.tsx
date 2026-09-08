@@ -11,7 +11,7 @@ import {
   getOpenRouterBoardResponseFormat,
   getOpenRouterModelOptions,
   normalizeOpenRouterModelId,
-  OPENROUTER_MODELS,
+  OPENROUTER_MODELS, WORKERS_AI_MODEL, WORKERS_AI_MODELS, isHostedSuite,
 } from './openRouterModels';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
@@ -35,7 +35,8 @@ interface AISettingsModalProps {
 // while the local model grinds out the full board. Best-effort; silently no-ops.
 async function fetchFillerClue(useProxy: boolean, apiKey: string): Promise<string> {
   const body = JSON.stringify({
-    model: 'google/gemini-3.1-flash-lite',
+    model: useProxy && isHostedSuite() ? WORKERS_AI_MODEL : 'google/gemini-3.1-flash-lite',
+    ...(useProxy && isHostedSuite()?{chat_template_kwargs:{enable_thinking:false}}:{}),
     messages: [{
       role: 'user',
       content: 'Write ONE clever Jeopardy! clue as a single declarative statement on a random interesting topic. Then on a new line put "A: " followed by the response phrased as a question. No preamble, under 40 words total.',
@@ -309,6 +310,7 @@ export default function AISettingsModal({
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [modelId, setModelId] = useState('google/gemini-3.1-flash-lite');
   const useProxy = aiProvider === 'openrouter' && !apiKey.trim();
+  useEffect(()=>{if(isHostedSuite() && useProxy && !modelId.startsWith('@cf/'))setModelId(WORKERS_AI_MODEL);else if(!useProxy&&apiKey&&modelId.startsWith('@cf/'))setModelId('google/gemini-3.1-flash-lite');},[useProxy,apiKey,modelId]);
   const [ollamaModel, setOllamaModel] = useState('jeopardylm');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11435');
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -333,7 +335,7 @@ export default function AISettingsModal({
     return {
       schemaVersion: 1,
       source: 'generated',
-      provider: aiProvider,
+      provider: requestedModel.startsWith('@cf/') ? 'workers-ai' : aiProvider,
       model,
       requestedModel,
       ...(resolvedModel ? { resolvedModel: resolvedModel.trim() } : {}),
@@ -367,7 +369,7 @@ export default function AISettingsModal({
         setAiProvider(savedProvider);
       }
 
-      const savedModelId = localStorage.getItem('jeopardy_model_id');
+      const savedModelId = isHostedSuite() && !savedKey ? (localStorage.getItem('jeopardy_model_id')?.startsWith('@cf/') ? localStorage.getItem('jeopardy_model_id') : WORKERS_AI_MODEL) : localStorage.getItem('jeopardy_model_id');
       if (savedModelId) {
         const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
         setModelId(normalizedModelId);
@@ -988,7 +990,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             className={`provider-tab${aiProvider === 'openrouter' ? ' active' : ''}`}
             onClick={() => { setAiProvider('openrouter'); setTestResult(null); }}
           >
-            External
+            {isHostedSuite() && useProxy ? 'CUNY AI' : 'External'}
           </button>
         </div>
 
@@ -1005,10 +1007,10 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         ) : (
           <div className="ai-provider-panel">
             <div className="ai-field-group">
-              <label className="ai-field-label">API Key</label>
+              <label className="ai-field-label">{isHostedSuite() && useProxy ? 'CUNY AI Lab' : 'API Key'}</label>
               {useProxy ? (
                 <div className="ai-key-configured">
-                  <span>&#x2713; External AI enabled by default</span>
+                  <span>{isHostedSuite()?'Workers AI through CUNY Login':'External AI enabled by default'}</span>
                   <button
                     type="button"
                     className="ai-key-change"
@@ -1047,7 +1049,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             <div className="ai-field-group">
               <label className="ai-field-label">Model</label>
               <div className="model-chip-grid">
-                {OPENROUTER_MODELS.map(({ id, label }) => (
+                {(isHostedSuite() && useProxy ? WORKERS_AI_MODELS : OPENROUTER_MODELS).map(({ id, label }) => (
                   <button
                     key={id}
                     type="button"
@@ -1065,7 +1067,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         {false && (aiProvider === 'openrouter' ? (
           <div className="ai-provider-panel">
             <div className="ai-field-group">
-              <label className="ai-field-label">API Key</label>
+              <label className="ai-field-label">{isHostedSuite() && useProxy ? 'CUNY AI Lab' : 'API Key'}</label>
               <div className="ai-input-row">
                 <input
                   type={showApiKey ? 'text' : 'password'}
