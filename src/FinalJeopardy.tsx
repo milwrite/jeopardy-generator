@@ -43,6 +43,7 @@ async function generateFinalClue(): Promise<FJClue> {
       }),
     });
     const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || 'Model request failed');
     content = d.choices?.[0]?.message?.content || '';
   } else {
     const r = await fetch(`${g('jeopardy_ollama_url', 'http://localhost:11435')}/api/chat`, {
@@ -107,7 +108,7 @@ export default function FinalJeopardy({ players, onComplete, onCancel, saved, on
     try {
       setClue(await generateFinalClue());
     } catch {
-      setClue({ category: 'Final Jeopardy', clue: 'Could not reach the model — check the connection and try again.', answer: '' });
+      setClue({ category: 'Final Jeopardy', clue: 'Generation failed. Sign in with CUNY or check your API key in Config, then try again.', answer: '' });
     }
     setLoading(false);
   };

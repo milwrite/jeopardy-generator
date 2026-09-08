@@ -68,16 +68,17 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
   if(path.startsWith('/api/work/'))return identity?env.WORK_ACCOUNTS.fetch(accountRequest(request,path,identity)):json({error:{message:'CUNY Login required'}},401);
   if(path==='/api/ai/chat'){
    if(request.method!=='POST')return json({error:'Method not allowed'},405);
+   if(!identity)return json({error:{message:'Sign in with CUNY to use included models, or supply your own API key in Config.'}},401);
    if(!(await env.REQUEST_LIMIT.limit({key:'ai:'+request.headers.get('cf-connecting-ip')})).success)return json({error:'Try again shortly'},429);
    const body=await boundedBody(request);
-   if(typeof body.model==='string'&&body.model.startsWith('@cf/')&&!identity)return json({error:{message:'CUNY Login required for Workers AI.'}},401);
    if(!Array.isArray(body.messages)||body.messages.length>300)return json({error:'Invalid model request'},400);
-   // The existing runtime remains available to guests; signed-in generation uses CUNY access.
-   const target=identity?TOOLS+'/v1/chat/completions':env.LEGACY_ORIGIN+'/api/ai/chat';
+   // Personal keys are sent by the browser directly to their provider.
+   // This included-access endpoint always requires verified CUNY identity.
+   const target=TOOLS+'/v1/chat/completions';
    const headers=new Headers({'content-type':'application/json'});
-   if(identity)headers.set('authorization','Bearer '+identity.gatewayJwt);
+   headers.set('authorization','Bearer '+identity.gatewayJwt);
    const upstream=new Request(target,{method:'POST',headers,body:JSON.stringify(body),signal:request.signal});
-   const response=identity?await env.GATEWAY.fetch(upstream):await fetch(upstream);
+   const response=await env.GATEWAY.fetch(upstream);
    return new Response(response.body,{status:response.status,headers:{...secure,'content-type':response.headers.get('content-type')||'application/json'}});
   }
   return await app(request,identity);

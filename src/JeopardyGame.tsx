@@ -1250,6 +1250,7 @@ export default function JeopardyGame() {
         {/* AI Settings Modal */}
         {showSettings && (
           <AISettingsModal
+            signedIn={Boolean(authUser)}
             onClose={() => setShowSettings(false)}
             onGeneratedCategories={handleGeneratedBoard}
           />

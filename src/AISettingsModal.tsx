@@ -27,6 +27,7 @@ const DEFAULT_SYSTEM_MESSAGE =
   'Output the single JSON object and nothing else.';
 
 interface AISettingsModalProps {
+  signedIn: boolean;
   onClose: () => void;
   onGeneratedCategories: (result: BoardGenerationResult) => void;
 }
@@ -297,6 +298,7 @@ const ensureBoardShape = (categories: Category[]) => {
 };
 
 export default function AISettingsModal({
+  signedIn,
   onClose,
   onGeneratedCategories,
 }: AISettingsModalProps) {
@@ -414,6 +416,10 @@ export default function AISettingsModal({
 
   const testApiKey = async () => {
     setTestResult(null);
+    if (isHostedSuite() && useProxy && !signedIn) {
+      setTestResult({success:false, message:'Sign in with CUNY or enter your own API key.'});
+      return;
+    }
 
     if (aiProvider === 'openrouter') {
       if (useProxy) {
@@ -555,6 +561,10 @@ export default function AISettingsModal({
 
   const generateQuestions = async () => {
     setTestResult(null);
+    if (isHostedSuite() && useProxy && !signedIn) {
+      setTestResult({success:false, message:'Sign in with CUNY or enter your own API key.'});
+      return;
+    }
 
     if (aiProvider === 'openrouter') {
       if (useProxy) {
@@ -1013,10 +1023,11 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         ) : (
           <div className="ai-provider-panel">
             <div className="ai-field-group">
-              <label className="ai-field-label">{isHostedSuite() && useProxy ? 'CUNY AI Lab' : 'API Key'}</label>
-              {useProxy ? (
+              <label className="ai-field-label" htmlFor="personal-api-key">{isHostedSuite() && useProxy && signedIn && !showKeyInput ? 'CUNY AI Lab' : 'OpenRouter API key'}</label>
+              {isHostedSuite() && !signedIn && <p className="model-choice-note"><a href="/auth/start?next=/">CUNY Login</a> is free, subject to usage limits. Otherwise, enter your own API key.</p>}
+              {useProxy && !showKeyInput && (signedIn || !isHostedSuite()) ? (
                 <div className="ai-key-configured">
-                  <span>{isHostedSuite()?'Models through CUNY Login':'External AI enabled by default'}</span>
+                  <span>{isHostedSuite()?'Included with CUNY Login · No API key needed':'External AI enabled by default'}</span>
                   <button
                     type="button"
                     className="ai-key-change"
@@ -1027,12 +1038,13 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
                 </div>
               ) : apiKey && !showKeyInput ? (
                 <div className="ai-key-configured">
-                  <span>&#x2713; API key configured</span>
+                  <span>Using your API key</span>
                   <button type="button" className="ai-key-change" onClick={() => setShowKeyInput(true)}>change</button>
                 </div>
               ) : (
                 <>
                   <input
+                    id="personal-api-key"
                     type="password"
                     value={apiKey}
                     onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
@@ -1046,7 +1058,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
                       onClick={() => { setShowKeyInput(false); setApiKey(''); setTestResult(null); }}
                       style={{ marginTop: 6 }}
                     >
-                      use default proxy instead
+                      {isHostedSuite() ? 'Use CUNY access instead' : 'Use default proxy instead'}
                     </button>
                   )}
                 </>
