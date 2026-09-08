@@ -150,14 +150,14 @@ export default function JeopardyGame() {
   // Game state
   // Player count state
   const [playerCount, setPlayerCount] = useState<number>(3);
-
+  
   const [gameState, setGameState] = useState<GameState>({
     categories: initializeCategories(),
     players: initializePlayers(playerCount),
     currentPlayer: 0,
     finalJeopardyActive: false
   });
-
+  
   // UI state
   const [selectedQuestion, setSelectedQuestion] = useState<{categoryIndex: number, questionIndex: number} | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -166,8 +166,8 @@ export default function JeopardyGame() {
   const [incorrectPlayers, setIncorrectPlayers] = useState<IncorrectPlayers>({});
   const [dailyDoubleWager, setDailyDoubleWager] = useState<number | null>(null);
   const [showDailyDoubleWager, setShowDailyDoubleWager] = useState(false);
-
-
+  
+  
   // Board editing state
   const [showEditor, setShowEditor] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{index: number, title: string} | null>(null);
@@ -179,7 +179,7 @@ export default function JeopardyGame() {
     value: number,
     dailyDouble?: boolean
   } | null>(null);
-
+  
   // Auth + boards state
   const [authUser, setAuthUser] = useState<{
     userId: number;
@@ -514,7 +514,7 @@ export default function JeopardyGame() {
   // Initialize persisted view state
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
+    
     try {
       const savedTheme = localStorage.getItem('jeopardy_theme');
       if (savedTheme) {
@@ -525,78 +525,78 @@ export default function JeopardyGame() {
     }
   }, []);
 
-
+  
   // Save theme preference to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('jeopardy_theme', gameTheme);
     }
   }, [gameTheme]);
-
-
+  
+  
   // Theme music functions have been temporarily removed
 
   // Handle category and question selection
   const handleQuestionSelect = (categoryIndex: number, questionIndex: number) => {
     const question = gameState.categories[categoryIndex].questions[questionIndex];
-
+    
     if (question.answered) return;
-
+    
     // Update the selected question
     setSelectedQuestion({ categoryIndex, questionIndex });
     setShowAnswer(false);
-
+    
     // Reset incorrect players when selecting a new question
     setIncorrectPlayers({});
-
+    
     // Mark question as revealed
     const updatedCategories = [...gameState.categories];
     updatedCategories[categoryIndex].questions[questionIndex].revealed = true;
-
+    
     setGameState({
       ...gameState,
       categories: updatedCategories
     });
-
+    
     // Ensure mobile scroll position is reset when opening a new question
     setTimeout(() => {
       window.scrollTo(0, 0);
       document.body.style.overflow = 'hidden'; // Prevent background scrolling on mobile
     }, 100);
-
+    
     // Handle Daily Double differently
     if (question.dailyDouble) {
       // Show wager screen instead of question immediately
       setDailyDoubleWager(null);
       setShowDailyDoubleWager(true);
-
+      
       // For Daily Double handling
     } else {
       // For regular questions, show question directly
       setShowDailyDoubleWager(false);
     }
   };
-
+  
   // Handle Daily Double wager submission
   const handleDailyDoubleWager = (wager: number) => {
     if (!selectedQuestion) return;
-
+    
     // Validate wager
     const { categoryIndex, questionIndex } = selectedQuestion;
     const question = gameState.categories[categoryIndex].questions[questionIndex];
     const playerScore = gameState.players[gameState.currentPlayer].score;
-
+    
     // Maximum wager is either player's score or 1000, whichever is greater
     const maxWager = Math.max(playerScore, 1000);
-
+    
     // Ensure wager is valid
     let finalWager = wager;
     if (wager < 100) finalWager = 100; // Minimum wager is $100
     if (wager > maxWager) finalWager = maxWager; // Maximum wager
-
+    
     // Round to nearest $100 increment
     finalWager = Math.round(finalWager / 100) * 100;
-
+    
     // Set the wager and show the question
     setDailyDoubleWager(finalWager);
     setShowDailyDoubleWager(false);
@@ -613,7 +613,7 @@ export default function JeopardyGame() {
   // Function to adjust category difficulty based on player performance
   const adjustCategoryDifficulty = (categories: Category[], categoryIndex: number): void => {
     const category = categories[categoryIndex];
-
+    
     // Ensure difficultyAdjustments is initialized
     if (!category.difficultyAdjustments) {
       category.difficultyAdjustments = {
@@ -624,10 +624,10 @@ export default function JeopardyGame() {
         1000: 0
       };
     }
-
+    
     // Group ratings by value tier
     const valueRatings: {[key: number]: Rating[]} = {};
-
+    
     // Collect all ratings for each value tier
     category.questions.forEach(question => {
       if (question.ratings && question.ratings.length > 0) {
@@ -638,17 +638,17 @@ export default function JeopardyGame() {
         valueRatings[value] = [...valueRatings[value], ...question.ratings];
       }
     });
-
+    
     // Calculate adjustments for each value tier
     Object.keys(valueRatings).forEach(valueStr => {
       const value = parseInt(valueStr, 10);
       const ratings = valueRatings[value];
-
+      
       // Only adjust if we have enough data (at least 3 ratings)
       if (ratings && ratings.length >= 3) {
         const goodCount = ratings.filter(r => r.rating === 'good').length;
         const successRate = goodCount / ratings.length;
-
+        
         // Use more gradual adjustments with a wider "normal" range
         if (successRate > 0.65) {
           // If success rate is high but not extreme, make questions slightly harder
@@ -670,22 +670,22 @@ export default function JeopardyGame() {
         // For success rates between 35-65%, maintain current difficulty
       }
     });
-
+    
     // Save adjustments to localStorage for persistence
     try {
       const adjustmentsKey = 'jeopardy_difficulty_adjustments';
       const savedAdjustments = localStorage.getItem(adjustmentsKey);
       const allAdjustments = savedAdjustments ? JSON.parse(savedAdjustments) : {};
-
+      
       // Update with the latest adjustments
       allAdjustments[category.title] = category.difficultyAdjustments;
       localStorage.setItem(adjustmentsKey, JSON.stringify(allAdjustments));
-
+      
       // Also save ratings for analytics
       const ratingsKey = 'jeopardy_question_difficulty_ratings';
-      const allRatings = localStorage.getItem(ratingsKey) ?
+      const allRatings = localStorage.getItem(ratingsKey) ? 
         JSON.parse(localStorage.getItem(ratingsKey) || '[]') : [];
-
+      
       // Add new ratings to the stored collection
       category.questions.forEach(question => {
         if (question.ratings && question.ratings.length > 0) {
@@ -701,7 +701,7 @@ export default function JeopardyGame() {
           });
         }
       });
-
+      
       localStorage.setItem(ratingsKey, JSON.stringify(allRatings));
     } catch (e) {
       console.error('Error saving difficulty adjustments:', e);
@@ -711,46 +711,46 @@ export default function JeopardyGame() {
   // Handle answering questions
   const handleAnswer = (correct: boolean, playerIndex?: number) => {
     if (!selectedQuestion) return;
-
-
+    
+    
     const { categoryIndex, questionIndex } = selectedQuestion;
     let questionValue = gameState.categories[categoryIndex].questions[questionIndex].value;
-
+    
     // If this is a Daily Double, use the wager instead of the standard value
     if (gameState.categories[categoryIndex].questions[questionIndex].dailyDouble && dailyDoubleWager !== null) {
       questionValue = dailyDoubleWager;
     }
-
+    
     // Update player score - use provided playerIndex or current player if not specified
     const updatedPlayers = [...gameState.players];
     const scorePlayerIndex = playerIndex !== undefined ? playerIndex : gameState.currentPlayer;
-
-    updatedPlayers[scorePlayerIndex].score += correct
-      ? questionValue
+    
+    updatedPlayers[scorePlayerIndex].score += correct 
+      ? questionValue 
       : -questionValue;
-
+    
     // Mark question as answered and add rating
     const updatedCategories = [...gameState.categories];
-
+    
     // Add rating to the question
     const rating: Rating = {
       rating: correct ? 'good' : 'bad',
       timestamp: new Date().toISOString()
     };
-
+    
     // Ensure ratings array exists
     if (!updatedCategories[categoryIndex].questions[questionIndex].ratings) {
       updatedCategories[categoryIndex].questions[questionIndex].ratings = [];
     }
-
+    
     // Add the new rating
     updatedCategories[categoryIndex].questions[questionIndex].ratings!.push(rating);
     updatedCategories[categoryIndex].questions[questionIndex].answered = true;
-
+    
     // Update difficulty adjustments based on this answer
     adjustCategoryDifficulty(updatedCategories, categoryIndex);
-
-    // If player who answered was correct, make them the current player,
+    
+    // If player who answered was correct, make them the current player, 
     // otherwise move to the next player
     let nextPlayerIndex;
     if (correct && playerIndex !== undefined) {
@@ -758,94 +758,94 @@ export default function JeopardyGame() {
     } else {
       nextPlayerIndex = (gameState.currentPlayer + 1) % gameState.players.length;
     }
-
+    
     setGameState({
       ...gameState,
       categories: updatedCategories,
       players: updatedPlayers,
       currentPlayer: nextPlayerIndex
     });
-
+    
     // Restore body scrolling
     document.body.style.overflow = '';
-
+    
     // Close the question view and reset Daily Double state
     setSelectedQuestion(null);
     setShowAnswer(false);
     setDailyDoubleWager(null);
     setShowDailyDoubleWager(false);
   };
-
+  
   // Handle deducting points from multiple players
   const handleMultipleIncorrect = () => {
     if (!selectedQuestion) return;
-
+    
     const { categoryIndex, questionIndex } = selectedQuestion;
     let questionValue = gameState.categories[categoryIndex].questions[questionIndex].value;
-
+    
     // If this is a Daily Double, use the wager instead of the standard value
     if (gameState.categories[categoryIndex].questions[questionIndex].dailyDouble && dailyDoubleWager !== null) {
       questionValue = dailyDoubleWager;
     }
-
-
+    
+    
     // Update player scores for all selected incorrect players
     const updatedPlayers = [...gameState.players];
-
+    
     Object.keys(incorrectPlayers).forEach(playerIdxStr => {
       const playerIdx = parseInt(playerIdxStr, 10);
       if (incorrectPlayers[playerIdx]) {
         updatedPlayers[playerIdx].score -= questionValue;
       }
     });
-
+    
     // Mark question as answered and add rating
     const updatedCategories = [...gameState.categories];
-
+    
     // Add "bad" rating to the question if at least one player got it wrong
     if (Object.keys(incorrectPlayers).length > 0) {
       const rating: Rating = {
         rating: 'bad',
         timestamp: new Date().toISOString()
       };
-
+      
       // Ensure ratings array exists
       if (!updatedCategories[categoryIndex].questions[questionIndex].ratings) {
         updatedCategories[categoryIndex].questions[questionIndex].ratings = [];
       }
-
+      
       // Add the new rating
       updatedCategories[categoryIndex].questions[questionIndex].ratings!.push(rating);
     }
-
+    
     updatedCategories[categoryIndex].questions[questionIndex].answered = true;
-
+    
     // Update difficulty adjustments based on this answer
     adjustCategoryDifficulty(updatedCategories, categoryIndex);
-
+    
     // Move to the next player
     const nextPlayerIndex = (gameState.currentPlayer + 1) % gameState.players.length;
-
+    
     setGameState({
       ...gameState,
       categories: updatedCategories,
       players: updatedPlayers,
       currentPlayer: nextPlayerIndex
     });
-
+    
     // Reset incorrect players state
     setIncorrectPlayers({});
-
+    
     // Restore body scrolling
     document.body.style.overflow = '';
-
+    
     // Close the question view and reset Daily Double state
     setSelectedQuestion(null);
     setShowAnswer(false);
     setDailyDoubleWager(null);
     setShowDailyDoubleWager(false);
   };
-
+  
   // Handle editing a category title
   const handleEditCategory = (index: number) => {
     if (!showEditor) return;
@@ -854,26 +854,26 @@ export default function JeopardyGame() {
       title: gameState.categories[index].title
     });
   };
-
+  
   // Save edited category title
   const saveCategory = () => {
     if (!editingCategory) return;
-
+    
     const updatedCategories = [...gameState.categories];
     updatedCategories[editingCategory.index].title = editingCategory.title;
-
+    
     setGameState({
       ...gameState,
       categories: updatedCategories
     });
-
+    
     setEditingCategory(null);
   };
-
+  
   // Handle editing a question
   const handleEditQuestion = (categoryIndex: number, questionIndex: number) => {
     if (!showEditor) return;
-
+    
     const question = gameState.categories[categoryIndex].questions[questionIndex];
     setEditingQuestion({
       categoryIndex,
@@ -884,7 +884,7 @@ export default function JeopardyGame() {
       dailyDouble: question.dailyDouble
     });
   };
-
+  
   // Stable callbacks for memoized QuestionCell — skip re-renders during auth/UI state changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleQuestionSelectCb = useCallback(handleQuestionSelect, [gameState]);
@@ -894,30 +894,30 @@ export default function JeopardyGame() {
   // Save edited question
   const saveQuestion = () => {
     if (!editingQuestion) return;
-
+    
     const { categoryIndex, questionIndex, text, answer, value, dailyDouble } = editingQuestion;
     const categoryTitle = gameState.categories[categoryIndex].title;
-
+    
     // Validate that the question follows both word exclusion rule and specificity requirement
     const validation = validateQuestionRule(categoryTitle, text, answer);
-
+    
     // If validation fails, show warning and ask for confirmation
     if (!validation.valid) {
       // Log format issue for data collection
       logBadResponse(categoryTitle, text, answer, validation.reason || "Format issue");
-
+      
       // For vague questions, show a warning dialog to the user
       if (validation.reason?.includes("too vague")) {
         const confirmSave = window.confirm(
           `Warning: This clue may be problematic.\n\n${validation.reason}\n\nFor example, a clue like "This East Asian country is known for its unique blend of traditional and modern culture" could accept multiple answers like Japan, South Korea, China, etc.\n\nDo you want to save anyway?`
         );
-
+        
         if (!confirmSave) {
           return; // Don't save if the user cancels
         }
       }
     }
-
+    
     const updatedCategories = [...gameState.categories];
     updatedCategories[categoryIndex].questions[questionIndex] = {
       ...updatedCategories[categoryIndex].questions[questionIndex],
@@ -927,18 +927,18 @@ export default function JeopardyGame() {
       dailyDouble,
       ruleViolation: validation.valid ? null : validation.reason
     };
-
+    
     setGameState({
       ...gameState,
       categories: updatedCategories
     });
-
+    
     setEditingQuestion(null);
   };
 
   // Check if all questions have been answered
   const allQuestionsAnswered = (): boolean => {
-    return gameState.categories.every(category =>
+    return gameState.categories.every(category => 
       category.questions.every(question => question.answered)
     );
   };
@@ -947,7 +947,7 @@ export default function JeopardyGame() {
   const toggleShowAnswer = () => {
     setShowAnswer(!showAnswer);
   };
-
+  
   // Reset the game
   const resetGame = () => {
     if (window.confirm("Are you sure you want to reset the game? All progress will be lost.")) {
@@ -964,8 +964,8 @@ export default function JeopardyGame() {
       applyGameState(resetState);
     }
   };
-
-
+  
+  
   // Export game board to JSON file
   const exportGameBoard = () => {
     try {
@@ -975,17 +975,17 @@ export default function JeopardyGame() {
         gameState: gameState,
         version: "1.0"
       };
-
+      
       const dataStr = JSON.stringify(exportData, null, 2);
-
+      
       // Check if data is too large (>10MB)
       if (dataStr.length > 10 * 1024 * 1024) {
         alert('Game board is too large to export. Please reduce the number of categories or questions.');
         return;
       }
-
+      
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-
+      
       // Use modern download approach
       if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
         // Safari fallback
@@ -1002,78 +1002,78 @@ export default function JeopardyGame() {
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-
+        
         // Clean up immediately
         setTimeout(() => {
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
         }, 100);
       }
-
+      
       console.log('Game board exported successfully');
     } catch (error) {
       console.error('Export error:', error);
       alert('Failed to export game board. Please try again.');
     }
   };
-
+  
   // Import game board from JSON file
   const importGameBoard = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+    
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('File is too large. Please select a file smaller than 10MB.');
       event.target.value = '';
       return;
     }
-
+    
     // Check file type
     if (!file.name.toLowerCase().endsWith('.json')) {
       alert('Please select a valid JSON file.');
       event.target.value = '';
       return;
     }
-
+    
     const reader = new FileReader();
-
+    
     reader.onerror = () => {
       alert('Error reading file. Please try again.');
       event.target.value = '';
     };
-
+    
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string;
-
+        
         if (!content || content.trim() === '') {
           throw new Error('File is empty');
         }
-
+        
         const parsed = JSON.parse(content);
         const importedData = parsed.content?.record?.board_data || parsed.board_data || parsed;
-
+        
         // Validate the imported data structure
         if (!importedData || typeof importedData !== 'object') {
           throw new Error('Invalid file format - not a valid JSON object');
         }
-
+        
         if (!importedData.gameState || !importedData.gameState.categories || !importedData.gameState.players) {
           throw new Error('Invalid file format - missing required game data');
         }
-
+        
         // Additional validation
         if (!Array.isArray(importedData.gameState.categories) || !Array.isArray(importedData.gameState.players)) {
           throw new Error('Invalid file format - categories and players must be arrays');
         }
-
+        
         if (importedData.gameState.categories.length !== 6) {
           throw new Error('Invalid file format - must have exactly 6 categories');
         }
-
+        
         const confirmMessage = `Import "${importedData.name || 'Unnamed Board'}"?\n\nThis will replace your current game board and all progress will be lost.`;
-
+        
         if (window.confirm(confirmMessage)) {
           setActiveBoard(null);
           setDraftMetadata({ schemaVersion: 1, source: 'imported' });
@@ -1091,22 +1091,22 @@ export default function JeopardyGame() {
         event.target.value = '';
       }
     };
-
+    
     reader.readAsText(file);
   };
-
+  
   // Open player settings
   const openPlayerSettings = () => {
     setEditingPlayers([...gameState.players]); // Copy current players for editing
     setTempPlayerCount(gameState.players.length);
     setShowPlayerSettings(true);
   };
-
+  
   // Save player settings
   const savePlayerSettings = () => {
     // Create new player array with updated count
     let updatedPlayers: Player[];
-
+    
     if (tempPlayerCount === editingPlayers.length) {
       // Just update names of existing players
       updatedPlayers = [...editingPlayers];
@@ -1124,7 +1124,7 @@ export default function JeopardyGame() {
       // Remove players (keep only the first tempPlayerCount players)
       updatedPlayers = editingPlayers.slice(0, tempPlayerCount);
     }
-
+    
     // Update game state with new players
     setGameState({
       ...gameState,
@@ -1132,14 +1132,14 @@ export default function JeopardyGame() {
       // If current player is now out of bounds, reset to player 0
       currentPlayer: gameState.currentPlayer >= tempPlayerCount ? 0 : gameState.currentPlayer
     });
-
+    
     // Update the player count
     setPlayerCount(tempPlayerCount);
-
+    
     // Close the modal
     setShowPlayerSettings(false);
   };
-
+  
   // Toggle Final Jeopardy mode
   const activateFinalJeopardy = () => {
     if (!allQuestionsAnswered()) {
@@ -1147,13 +1147,13 @@ export default function JeopardyGame() {
         return;
       }
     }
-
+    
     setGameState({
       ...gameState,
       finalJeopardyActive: true
     });
   };
-
+  
   // Handle Final Jeopardy wagers and answers
   const handleFinalJeopardy = () => {
     // Simplified implementation - would need more UI components
@@ -1228,7 +1228,6 @@ export default function JeopardyGame() {
                   </span>
                 )}
 
-
               </>
             ) : (
               null
@@ -1243,8 +1242,8 @@ export default function JeopardyGame() {
             <button className="btn-danger" onClick={resetGame}>Reset</button>
           </div>
         </div>
-
-
+        
+        
         {/* AI Settings Modal */}
         {showSettings && (
           <AISettingsModal
@@ -1252,7 +1251,7 @@ export default function JeopardyGame() {
             onGeneratedCategories={handleGeneratedBoard}
           />
         )}
-
+        
         {/* Final Jeopardy UI */}
         {gameState.finalJeopardyActive ? (
           <FinalJeopardy
@@ -1269,8 +1268,8 @@ export default function JeopardyGame() {
             {/* Categories Header */}
             <div className="categories-row">
               {gameState.categories.map((category, categoryIndex) => (
-                <div
-                  key={categoryIndex}
+                <div 
+                  key={categoryIndex} 
                   className={`category-header ${showEditor ? 'editable' : ''}`}
                   onClick={() => handleEditCategory(categoryIndex)}
                 >
@@ -1281,7 +1280,7 @@ export default function JeopardyGame() {
                 </div>
               ))}
             </div>
-
+            
             {/* Questions Grid */}
             {[0, 1, 2, 3, 4].map(questionIndex => (
               <div key={questionIndex} className="questions-row">
@@ -1301,7 +1300,7 @@ export default function JeopardyGame() {
             ))}
           </>
         )}
-
+        
         {/* Selected Question View */}
         {selectedQuestion && (
           <div className="question-view">
@@ -1311,21 +1310,21 @@ export default function JeopardyGame() {
                 <div className="daily-double-reveal">
                   <h2>Daily Double!</h2>
                   <div className="daily-double-animation"></div>
-
+                  
                   <div className="daily-double-wager">
                     <p className="wager-instructions">
                       {gameState.players[gameState.currentPlayer].name}, enter your wager:
                     </p>
-
+                    
                     <div className="wager-info">
                       <p>Current score: ${gameState.players[gameState.currentPlayer].score}</p>
                       <p>Maximum wager: ${Math.max(gameState.players[gameState.currentPlayer].score, 1000)}</p>
                       <p className="wager-note">Wagers must be in $100 increments</p>
                     </div>
-
+                    
                     <div className="wager-input-container">
-                      <input
-                        type="number"
+                      <input 
+                        type="number" 
                         className="wager-input"
                         placeholder="Enter wager"
                         min={100}
@@ -1338,7 +1337,7 @@ export default function JeopardyGame() {
                           setDailyDoubleWager(roundedValue);
                         }}
                       />
-                      <button
+                      <button 
                         className="wager-button"
                         onClick={() => handleDailyDoubleWager(dailyDoubleWager || gameState.categories[selectedQuestion.categoryIndex].questions[selectedQuestion.questionIndex].value)}
                       >
@@ -1369,7 +1368,7 @@ export default function JeopardyGame() {
                       </p>
                     </>
                   )}
-
+                  
                   {/* Answer Display (for both regular and daily double) */}
                   {showAnswer && (
                     <div className="answer">
@@ -1377,15 +1376,15 @@ export default function JeopardyGame() {
                       <p className="correct-response">{gameState.categories[selectedQuestion.categoryIndex].questions[selectedQuestion.questionIndex].answer}</p>
                     </div>
                   )}
-
+                  
                   <div className="question-controls">
                     <div className="button-row">
                       <button className={showAnswer ? 'btn-ghost' : 'btn-primary'} onClick={toggleShowAnswer}>
                         {showAnswer ? 'Hide Response' : 'Reveal Response'}
                       </button>
-
+                      
                       {showAnswer && (
-                        <button
+                        <button 
                           className="back-button"
                           onClick={() => {
                             // Mark the question as answered even with no points
@@ -1393,16 +1392,16 @@ export default function JeopardyGame() {
                               const { categoryIndex, questionIndex } = selectedQuestion;
                               const updatedCategories = [...gameState.categories];
                               updatedCategories[categoryIndex].questions[questionIndex].answered = true;
-
+                              
                               setGameState({
                                 ...gameState,
                                 categories: updatedCategories
                               });
                             }
-
+                            
                             // Restore body scrolling
                             document.body.style.overflow = '';
-
+                            
                             // Close the question view
                             setSelectedQuestion(null);
                             setShowAnswer(false);
@@ -1414,7 +1413,7 @@ export default function JeopardyGame() {
                         </button>
                       )}
                     </div>
-
+                    
                     {showAnswer ? (
                       <div className="player-selection">
                         <h4>Award Points To:</h4>
@@ -1423,14 +1422,14 @@ export default function JeopardyGame() {
                             <div key={idx} className="player-answer-option">
                               <div className="player-name">{player.name}</div>
                               <div className="answer-buttons">
-                                <button
-                                  className="correct-button"
+                                <button 
+                                  className="correct-button" 
                                   onClick={() => handleAnswer(true, idx)}
                                 >
                                   Correct
                                 </button>
-                                <button
-                                  className="incorrect-button"
+                                <button 
+                                  className="incorrect-button" 
                                   onClick={() => handleAnswer(false, idx)}
                                 >
                                   Incorrect
@@ -1439,13 +1438,13 @@ export default function JeopardyGame() {
                             </div>
                           ))}
                         </div>
-
+                        
                         <div className="multi-deduction">
                           <h4>Deduct From Multiple Players</h4>
                           <div className="player-checkboxes">
                             {gameState.players.map((player, idx) => (
-                              <div
-                                key={idx}
+                              <div 
+                                key={idx} 
                                 className="player-checkbox"
                                 onClick={() => toggleIncorrectPlayer(idx)}
                               >
@@ -1464,7 +1463,7 @@ export default function JeopardyGame() {
                             onClick={handleMultipleIncorrect}
                             disabled={Object.keys(incorrectPlayers).length === 0}
                           >
-                            {Object.keys(incorrectPlayers).length > 0
+                            {Object.keys(incorrectPlayers).length > 0 
                               ? `Deduct Points from ${Object.keys(incorrectPlayers).length} Player${Object.keys(incorrectPlayers).length > 1 ? 's' : ''}`
                               : 'Select Players to Deduct Points'}
                           </button>
@@ -1478,12 +1477,12 @@ export default function JeopardyGame() {
           </div>
         )}
       </div>
-
+      
       {/* Scoreboard */}
       <div className="scoreboard">
         {gameState.players.map((player, index) => (
-          <div
-            key={index}
+          <div 
+            key={index} 
             className={`player ${index === gameState.currentPlayer ? 'active' : ''}`}
           >
             <p className="player-name">{player.name}</p>
@@ -1491,7 +1490,7 @@ export default function JeopardyGame() {
           </div>
         ))}
       </div>
-
+      
       {/* Category Editor Modal */}
       {editingCategory && (
         <div className="editor-modal">
@@ -1499,9 +1498,9 @@ export default function JeopardyGame() {
             <h2>Edit Category</h2>
             <div className="form-group">
               <label>Category Title:</label>
-              <input
-                type="text"
-                value={editingCategory.title}
+              <input 
+                type="text" 
+                value={editingCategory.title} 
                 onChange={(e) => setEditingCategory({...editingCategory, title: e.target.value})}
                 autoFocus
               />
@@ -1513,19 +1512,19 @@ export default function JeopardyGame() {
           </div>
         </div>
       )}
-
+      
       {/* Question Editor Modal */}
       {editingQuestion && (
         <div className="editor-modal">
           <div className="editor-content">
             <h2>Edit Clue</h2>
-
+            
             {/* Live validation logic runs silently */}
-
+            
             <div className="form-group">
               <label>Clue Text:</label>
-              <textarea
-                value={editingQuestion.text}
+              <textarea 
+                value={editingQuestion.text} 
                 onChange={(e) => setEditingQuestion({...editingQuestion, text: e.target.value})}
                 rows={4}
                 autoFocus
@@ -1534,16 +1533,16 @@ export default function JeopardyGame() {
             </div>
             <div className="form-group">
               <label>Correct Response:</label>
-              <input
-                type="text"
-                value={editingQuestion.answer}
+              <input 
+                type="text" 
+                value={editingQuestion.answer} 
                 onChange={(e) => setEditingQuestion({...editingQuestion, answer: e.target.value})}
                 placeholder="Enter the correct response"
               />
             </div>
             <div className="form-group">
               <label>Value:</label>
-              <select
+              <select 
                 value={editingQuestion.value}
                 onChange={(e) => setEditingQuestion({...editingQuestion, value: parseInt(e.target.value, 10)})}
               >
@@ -1572,7 +1571,7 @@ export default function JeopardyGame() {
           </div>
         </div>
       )}
-
+      
       {/* Auth Modal */}
       {showAuth && (
         <div className="cloud-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAuth(false); }}>
@@ -1746,12 +1745,12 @@ export default function JeopardyGame() {
             <h2>Player Settings</h2>
             <div className="form-group">
               <label>Number of Players:</label>
-              <select
-                value={tempPlayerCount}
+              <select 
+                value={tempPlayerCount} 
                 onChange={(e) => {
                   const newCount = parseInt(e.target.value, 10);
                   setTempPlayerCount(newCount);
-
+                  
                   // Adjust editing players array based on new count
                   if (newCount > editingPlayers.length) {
                     // Add new players
@@ -1775,14 +1774,14 @@ export default function JeopardyGame() {
                 <option value="4">4 Players</option>
               </select>
             </div>
-
+            
             {/* Player name editor */}
             {editingPlayers.map((player, index) => (
               <div className="form-group" key={index}>
                 <label>Player {index + 1} Name:</label>
-                <input
-                  type="text"
-                  value={player.name}
+                <input 
+                  type="text" 
+                  value={player.name} 
                   onChange={(e) => {
                     const updatedPlayers = [...editingPlayers];
                     updatedPlayers[index].name = e.target.value;
@@ -1791,7 +1790,7 @@ export default function JeopardyGame() {
                 />
               </div>
             ))}
-
+            
             <div className="button-group">
               <button className="btn-ghost" onClick={() => setShowPlayerSettings(false)}>Cancel</button>
               <button className="btn-primary" onClick={savePlayerSettings}>Save Players</button>
