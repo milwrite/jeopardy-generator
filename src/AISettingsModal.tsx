@@ -913,6 +913,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
 
   // Auto-detect the local model server + adapter, so users never touch endpoints.
   useEffect(() => {
+    if(aiProvider!=='ollama')return;
     let active = true;
     const check = async () => {
       try {
@@ -928,7 +929,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
     check();
     const id = setInterval(check, 5000);
     return () => { active = false; clearInterval(id); };
-  }, [ollamaUrl, ollamaModel]);
+  }, [aiProvider, ollamaUrl, ollamaModel]);
 
   const statusStyle = {
     padding: '10px 14px', borderRadius: 8, marginBottom: 18, fontSize: 18,

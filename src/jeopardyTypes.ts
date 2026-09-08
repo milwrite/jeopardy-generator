@@ -35,6 +35,7 @@ export interface GameState {
   players: Player[];
   currentPlayer: number;
   finalJeopardyActive: boolean;
+  finalRound?: import('./FinalJeopardy').FinalRoundState;
 }
 
 export interface IncorrectPlayers {
@@ -63,7 +64,7 @@ export interface BoardGenerationResult {
 }
 
 export interface StoredBoardSummary {
-  id: number;
+  id: string;
   name: string;
   source: BoardSource;
   ai_provider: string | null;

@@ -187,6 +187,7 @@ export default function JeopardyGame() {
     email?: string | null;
   } | null>(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authUsername, setAuthUsername] = useState('');
   const [authEmail, setAuthEmail] = useState('');
@@ -235,6 +236,7 @@ export default function JeopardyGame() {
   const activateStoredBoard = useCallback((board: StoredBoard, state: GameState) => {
     const { board_data: _boardData, ...summary } = board;
     setActiveBoard({ ...summary, savedSnapshot: gameStateSnapshot(state) });
+    if(typeof window!=='undefined')history.replaceState(null,'','/?work='+encodeURIComponent(board.id));
     setDraftMetadata(board.metadata);
     setPendingGeneratedSave(false);
     rememberBoard(summary);
@@ -315,12 +317,25 @@ export default function JeopardyGame() {
     }
   }, [activateStoredBoard]);
 
-  // Check session on mount
+  // Restore before enabling play so an existing board cannot be overwritten by defaults.
   useEffect(() => {
-    apiFetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
-      if (data) setAuthUser(data);
-    }).catch(() => {});
-  }, []);
+    let active=true;
+    (async()=>{
+      const session=await apiFetch('/api/auth/me');
+      if(session.ok&&active)setAuthUser(await session.json());
+      const work=new URLSearchParams(location.search).get('work');
+      if(work){
+        const response=await apiFetch('/api/boards/'+encodeURIComponent(work));
+        if(!response.ok)throw new Error('This board could not be reopened. Reload to retry.');
+        const data=await response.json();
+        if(!data.board_data?.gameState)throw new Error('This board has no game state.');
+        if(active){applyGameState(data.board_data.gameState);activateStoredBoard(data,data.board_data.gameState);}
+      }
+      if(!work){const raw=sessionStorage.getItem('jeopardy-login-draft');if(raw){const draft=JSON.parse(raw);if(draft.gameState?.categories){applyGameState(draft.gameState);setDraftMetadata(draft.metadata);setPendingGeneratedSave(true);}sessionStorage.removeItem('jeopardy-login-draft');}}
+      if(active)setHydrating(false);
+    })().catch(error=>{if(active)setSaveStatus(error.message);});
+    return()=>{active=false;};
+  }, [applyGameState,activateStoredBoard]);
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -373,7 +388,7 @@ export default function JeopardyGame() {
   };
 
   const handleLogout = async () => {
-    await apiFetch('/api/auth/logout', { method: 'POST' });
+    await apiFetch('/auth/logout', { method: 'POST' });
     setAuthUser(null);
     setActiveBoard(null);
     setBoardSaveState('idle');
@@ -384,8 +399,7 @@ export default function JeopardyGame() {
   const loadBoards = async () => {
     setBoardsLoading(true);
     try {
-      const res = await apiFetch('/api/boards');
-      if (res.ok) setBoards((await res.json()) as StoredBoardSummary[]);
+      let offset:number|null=0;const all:StoredBoardSummary[]=[];while(offset!==null){const res=await apiFetch('/api/boards?offset='+offset);if(!res.ok)throw new Error('Could not load boards');const data=await res.json();all.push(...data.boards);offset=data.nextOffset;}setBoards(all);
     } finally {
       setBoardsLoading(false);
     }
@@ -396,7 +410,7 @@ export default function JeopardyGame() {
     loadBoards();
   };
 
-  const loadBoard = async (id: number) => {
+  const loadBoard = async (id: string) => {
     const res = await apiFetch(`/api/boards/${id}`);
     if (!res.ok) return;
     const data = (await res.json()) as StoredBoard;
@@ -410,8 +424,8 @@ export default function JeopardyGame() {
     }
   };
 
-  const deleteBoard = async (id: number) => {
-    const response = await apiFetch(`/api/boards/${id}`, { method: 'DELETE' });
+  const deleteBoard = async (id: string) => {
+    const response = await apiFetch(`/api/boards/${id}`, { method: 'DELETE', headers: {'content-type':'application/json'}, body:JSON.stringify({expectedRevision:boards.find(b=>b.id===id)?.revision}) });
     if (!response.ok) return;
     setBoards((current) => current.filter((board) => board.id !== id));
     if (activeBoardRef.current?.id === id) {
@@ -463,6 +477,16 @@ export default function JeopardyGame() {
     gameState,
     persistActiveBoard,
   ]);
+
+  const initialBoardSnapshot=useRef(gameStateSnapshot(gameState));
+  useEffect(()=>{
+    if(hydrating||!authUser||activeBoard||saveInFlightRef.current||boardSaveState==='error'||boardSaveState==='conflict')return;
+    if(!pendingGeneratedSave&&gameStateSnapshot(gameState)===initialBoardSnapshot.current)return;
+    const timer=window.setTimeout(()=>{void createStoredBoard(suggestedBoardName(draftMetadata),gameState,draftMetadata);},900);
+    return()=>window.clearTimeout(timer);
+  },[hydrating,authUser,activeBoard,boardSaveState,pendingGeneratedSave,gameState,draftMetadata,createStoredBoard]);
+
+  const updateFinalRound=useCallback((finalRound:import('./FinalJeopardy').FinalRoundState)=>setGameState(current=>JSON.stringify(current.finalRound)===JSON.stringify(finalRound)?current:{...current,finalRound}),[]);
 
   const handleGeneratedBoard = ({ categories, metadata }: BoardGenerationResult) => {
     const nextState: GameState = {
@@ -1027,7 +1051,8 @@ export default function JeopardyGame() {
           throw new Error('File is empty');
         }
         
-        const importedData = JSON.parse(content);
+        const parsed = JSON.parse(content);
+        const importedData = parsed.content?.record?.board_data || parsed.board_data || parsed;
         
         // Validate the imported data structure
         if (!importedData || typeof importedData !== 'object') {
@@ -1136,8 +1161,11 @@ export default function JeopardyGame() {
   };
 
   // Full game render
+  if(hydrating)return <main className="suite-loading"><a href="/auth/start?next=/">CUNY Login</a><p role="status">{saveStatus||'Opening game…'}</p></main>;
+
   return (
     <div className={`jeopardy-game ${gameTheme}`}>
+      <nav className="suite-account" aria-label="CUNY account"><a onClick={async event=>{event.preventDefault();if(authUser){if(activeBoard&&gameStateSnapshot(gameState)!==activeBoard.savedSnapshot&&!await persistActiveBoard(activeBoard.name,gameState,draftMetadata))return;location.assign('/my-work/');}else{sessionStorage.setItem('jeopardy-login-draft',JSON.stringify({gameState,metadata:draftMetadata}));location.assign('/auth/start?next=/');}}} href={authUser?'/my-work/':'/auth/start?next=/'}>{authUser?'My work':'CUNY Login'}</a></nav>
       {/* Game Board */}
       <div className="game-board">
         <h1 className="game-title">Jeopardy!</h1>
@@ -1187,7 +1215,7 @@ export default function JeopardyGame() {
             </label>
             {authUser ? (
               <>
-                <button className="cloud-btn" onClick={openBoards}>My Boards</button>
+                <button className="cloud-btn" onClick={openBoards}>My Boards</button><a className="cloud-btn" href="/import">Import previous boards</a>
                 <button className="cloud-btn" onClick={openSaveDialog}>
                   {activeBoard ? 'Save / Rename' : 'Save'}
                 </button>
@@ -1199,13 +1227,11 @@ export default function JeopardyGame() {
                     {boardSaveState === 'conflict' && 'Reload needed'}
                   </span>
                 )}
-                <span className="cloud-username">{authUser.username}</span>
-                <button className="cloud-btn cloud-btn-logout" onClick={handleLogout}>Sign Out</button>
+                
+                
               </>
             ) : (
-              <button className="cloud-btn cloud-btn-signin" onClick={() => { setShowAuth(true); setAuthMode('login'); }}>
-                Sign In
-              </button>
+              null
             )}
           </div>
 
@@ -1230,6 +1256,8 @@ export default function JeopardyGame() {
         {/* Final Jeopardy UI */}
         {gameState.finalJeopardyActive ? (
           <FinalJeopardy
+            saved={gameState.finalRound}
+            onStateChange={updateFinalRound}
             players={gameState.players}
             onComplete={(players) =>
               setGameState((currentState) => ({ ...currentState, players, finalJeopardyActive: false }))

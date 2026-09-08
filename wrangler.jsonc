@@ -1,23 +1,70 @@
 {
-  "name": "jeopardy-lm",
-  "compatibility_date": "2025-04-01",
-  "main": "src/index.ts",
+  "name": "jeopardy",
+  "account_id": "452c33847cf5cb1e46f391fca32fd1b5",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-07",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
   "assets": {
     "directory": "./out",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "USER_STORE",
-        "class_name": "UserStore"
-      }
-    ]
-  },
-  "migrations": [
+  "services": [
     {
-      "tag": "user-store-v1",
-      "new_sqlite_classes": ["UserStore"]
+      "binding": "IDENTITY",
+      "service": "cail-doorway",
+      "entrypoint": "WorkerIdentity",
+      "props": {
+        "id": "jeopardy",
+        "worker": "jeopardy",
+        "workspace": true
+      }
+    },
+    {
+      "binding": "WORKSPACE",
+      "service": "cail-work-accounts"
+    },
+    {
+      "binding": "WORK_ACCOUNTS",
+      "service": "cail-work-accounts",
+      "entrypoint": "WorkerAccounts",
+      "props": {
+        "id": "jeopardy",
+        "worker": "jeopardy",
+        "version": 1,
+        "name": "Jeopardy",
+        "description": "Create and play quiz boards.",
+        "kind": "board",
+        "href": "/",
+        "resumePath": "/",
+        "workerRoutes": true
+      }
+    },
+    {
+      "binding": "GATEWAY",
+      "service": "cail-model-api"
     }
-  ]
+  ],
+  "ratelimits": [
+    {
+      "name": "REQUEST_LIMIT",
+      "namespace_id": "74104",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "PUBLIC_ORIGIN": "https://jeopardy.ailab-452.workers.dev",
+    "APP_ID": "jeopardy",
+    "RELEASE": "dev",
+    "LEGACY_ORIGIN": "https://jeopardy.inference-arcade.com"
+  },
+  "observability": {
+    "enabled": true
+  }
 }

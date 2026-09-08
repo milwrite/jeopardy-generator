@@ -2415,3 +2415,5 @@ button:disabled {
 .pw-requirements li.met::before {
   content: '✓';
 }
+
+.suite-account{position:absolute;top:14px;right:22px;z-index:40;font:12px/1.4 system-ui,sans-serif}.suite-account a{color:inherit;opacity:.75;text-decoration:none}.suite-account a:hover{opacity:1;text-decoration:underline}.suite-loading{padding:30px}.suite-loading a{float:right}@media(max-width:600px){.suite-account{top:9px;right:14px;font-size:11px}}

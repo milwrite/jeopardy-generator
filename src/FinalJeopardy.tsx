@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Player } from './jeopardyTypes';
 
-interface FJClue {
+export interface FJClue {
   category: string;
   clue: string;
   answer: string;
@@ -71,21 +71,26 @@ async function generateFinalClue(): Promise<FJClue> {
   };
 }
 
+export interface FinalRoundState {phase:'wager'|'clue'|'adjudicate'|'results';wagers:number[];clue:FJClue|null;clueRevealed:boolean;answerRevealed:boolean;correct:boolean[];finalPlayers:Player[]}
 interface Props {
+  saved?:FinalRoundState;
+  onStateChange:(state:FinalRoundState)=>void;
   players: Player[];
   onComplete: (players: Player[]) => void;
   onCancel: () => void;
 }
 
-export default function FinalJeopardy({ players, onComplete, onCancel }: Props) {
-  const [phase, setPhase] = useState<'wager' | 'clue' | 'adjudicate' | 'results'>('wager');
-  const [wagers, setWagers] = useState<number[]>(players.map(() => 0));
-  const [clue, setClue] = useState<FJClue | null>(null);
+export default function FinalJeopardy({ players, onComplete, onCancel, saved, onStateChange }: Props) {
+  const [phase, setPhase] = useState<'wager' | 'clue' | 'adjudicate' | 'results'>(saved?.phase==='clue'&&!saved.clue?'wager':saved?.phase||'wager');
+  const [wagers, setWagers] = useState<number[]>(saved?.wagers||players.map(() => 0));
+  const [clue, setClue] = useState<FJClue | null>(saved?.clue||null);
   const [loading, setLoading] = useState(false);
-  const [clueRevealed, setClueRevealed] = useState(false);
-  const [answerRevealed, setAnswerRevealed] = useState(false);
-  const [correct, setCorrect] = useState<boolean[]>(players.map(() => false));
-  const [finalPlayers, setFinalPlayers] = useState<Player[]>(players);
+  const [clueRevealed, setClueRevealed] = useState(saved?.clueRevealed||false);
+  const [answerRevealed, setAnswerRevealed] = useState(saved?.answerRevealed||false);
+  const [correct, setCorrect] = useState<boolean[]>(saved?.correct||players.map(() => false));
+  const [finalPlayers, setFinalPlayers] = useState<Player[]>(saved?.finalPlayers||players);
+
+  useEffect(()=>{onStateChange({phase,wagers,clue,clueRevealed,answerRevealed,correct,finalPlayers});},[phase,wagers,clue,clueRevealed,answerRevealed,correct,finalPlayers,onStateChange]);
 
   const maxWager = (i: number) => Math.max(players[i].score, 0) || 1000;
 
