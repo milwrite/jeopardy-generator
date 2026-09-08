@@ -11,7 +11,7 @@ import {
   getOpenRouterBoardResponseFormat,
   getOpenRouterModelOptions,
   normalizeOpenRouterModelId,
-  OPENROUTER_MODELS, WORKERS_AI_MODEL, WORKERS_AI_MODELS, isHostedSuite,
+  OPENROUTER_MODELS, WORKERS_AI_MODEL, WORKERS_AI_MODELS, isHostedSuite, configuredModelId,
 } from './openRouterModels';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
@@ -310,7 +310,12 @@ export default function AISettingsModal({
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [modelId, setModelId] = useState('google/gemini-3.1-flash-lite');
   const useProxy = aiProvider === 'openrouter' && !apiKey.trim();
-  useEffect(()=>{if(isHostedSuite() && useProxy && !modelId.startsWith('@cf/'))setModelId(WORKERS_AI_MODEL);else if(!useProxy&&apiKey&&modelId.startsWith('@cf/'))setModelId('google/gemini-3.1-flash-lite');},[useProxy,apiKey,modelId]);
+  useEffect(()=>{if(!useProxy&&apiKey&&modelId.startsWith('@cf/'))setModelId('google/gemini-3.1-flash-lite');},[useProxy,apiKey,modelId]);
+  const selectModel = (id: string) => {
+    setModelId(id);
+    setTestResult(null);
+    try { localStorage.setItem('jeopardy_model_id', id); } catch { /* Current session remains usable. */ }
+  };
   const [ollamaModel, setOllamaModel] = useState('jeopardylm');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11435');
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
@@ -369,7 +374,7 @@ export default function AISettingsModal({
         setAiProvider(savedProvider);
       }
 
-      const savedModelId = isHostedSuite() && !savedKey ? (localStorage.getItem('jeopardy_model_id')?.startsWith('@cf/') ? localStorage.getItem('jeopardy_model_id') : WORKERS_AI_MODEL) : localStorage.getItem('jeopardy_model_id');
+      const savedModelId = configuredModelId(localStorage.getItem('jeopardy_model_id'), isHostedSuite(), !savedKey);
       if (savedModelId) {
         const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
         setModelId(normalizedModelId);
@@ -1011,7 +1016,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
               <label className="ai-field-label">{isHostedSuite() && useProxy ? 'CUNY AI Lab' : 'API Key'}</label>
               {useProxy ? (
                 <div className="ai-key-configured">
-                  <span>{isHostedSuite()?'Workers AI through CUNY Login':'External AI enabled by default'}</span>
+                  <span>{isHostedSuite()?'Models through CUNY Login':'External AI enabled by default'}</span>
                   <button
                     type="button"
                     className="ai-key-change"
@@ -1048,19 +1053,27 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
               )}
             </div>
             <div className="ai-field-group">
-              <label className="ai-field-label">Model</label>
-              <div className="model-chip-grid">
-                {(isHostedSuite() && useProxy ? WORKERS_AI_MODELS : OPENROUTER_MODELS).map(({ id, label }) => (
+              <label className="ai-field-label" htmlFor="generation-model">Model</label>
+              {isHostedSuite() && useProxy ? <>
+                <select id="generation-model" className="ai-input" value={modelId} onChange={event => selectModel(event.target.value)}>
+                  {!WORKERS_AI_MODELS.some(model => model.id === modelId) && <option value={modelId}>{modelId}</option>}
+                  {WORKERS_AI_MODELS.map(({id, label}) => <option key={id} value={id}>{label}</option>)}
+                </select>
+                <p className="model-id-detail">{modelId}</p>
+                <p className="model-choice-note">Applies to board generation and Final Jeopardy. Your selection is remembered.</p>
+              </> : <div className="model-chip-grid" role="group" aria-label="Model">
+                {OPENROUTER_MODELS.map(({ id, label }) => (
                   <button
                     key={id}
                     type="button"
                     className={`model-chip${modelId === id ? ' selected' : ''}`}
-                    onClick={() => { setModelId(id); setTestResult(null); }}
+                    aria-pressed={modelId === id}
+                    onClick={() => selectModel(id)}
                   >
                     {label}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
           </div>
         )}

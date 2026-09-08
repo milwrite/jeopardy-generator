@@ -2078,6 +2078,12 @@ button:disabled {
 }
 
 /* ─── Cloud Boards / Auth Controls ───────────────────────────────────── */
+.model-id-detail { overflow-wrap: anywhere; font: 12px/1.5 monospace; color: #c2d8fa; margin-top: 8px; }
+.model-choice-note { font: 14px/1.5 Arial, sans-serif; color: #c2d8fa; margin-top: 6px; }
+#generation-model { min-height: 44px; width: 100%; }
+#generation-model:focus-visible { outline: 3px solid #ffd700; outline-offset: 3px; }
+.ai-settings-panel .ai-key-configured { color: #86efac; }
+.ai-settings-panel .ai-key-change { color: #b8d4ff; }
 
 .cloud-boards-controls {
   display: flex;

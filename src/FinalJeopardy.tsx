@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import {WORKERS_AI_MODEL,isHostedSuite,getOpenRouterModelOptions} from './openRouterModels';
+import {configuredModelId,isHostedSuite,getOpenRouterModelOptions} from './openRouterModels';
 import type { Player } from './jeopardyTypes';
 
 export interface FJClue {
@@ -21,6 +21,7 @@ async function generateFinalClue(): Promise<FJClue> {
 
   let content = '';
   const useProxy = g('jeopardy_ai_provider', 'openrouter') === 'openrouter' && !g('jeopardy_api_key');
+  const model = configuredModelId(g('jeopardy_model_id'), isHostedSuite(), useProxy);
   if (g('jeopardy_ai_provider', 'openrouter') === 'openrouter') {
     const r = await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -35,10 +36,9 @@ async function generateFinalClue(): Promise<FJClue> {
             }),
       },
       body: JSON.stringify({
-        model: useProxy && isHostedSuite() ? WORKERS_AI_MODEL : g('jeopardy_model_id', 'google/gemini-3.1-flash-lite'),
-        ...getOpenRouterModelOptions(useProxy && isHostedSuite()?WORKERS_AI_MODEL:g('jeopardy_model_id')),
+        model,
+        ...getOpenRouterModelOptions(model),
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 300,
         temperature: 0.6,
       }),
     });
