@@ -147,6 +147,7 @@ const QuestionCell = memo(function QuestionCell({
 });
 
 export default function JeopardyGame() {
+  const importFileRef = useRef<HTMLInputElement>(null);
   // Game state
   // Player count state
   const [playerCount, setPlayerCount] = useState<number>(3);
@@ -1172,9 +1173,9 @@ export default function JeopardyGame() {
         <h1 className="game-title">Jeopardy!</h1>
 
         {/* Settings and controls */}
-        <div className="game-controls">
+        <div className="game-controls" role="group" aria-label="Game controls">
           {/* Board group: editing tools */}
-          <div className="ctrl-group">
+          <div className="ctrl-group" role="group" aria-label="Board setup">
             <button onClick={() => setShowEditor(!showEditor)}>
               {showEditor ? 'Close Editor' : 'Edit Board'}
             </button>
@@ -1184,7 +1185,7 @@ export default function JeopardyGame() {
           </div>
 
           {/* Settings group: AI config + theme */}
-          <div className="ctrl-group">
+          <div className="ctrl-group" role="group" aria-label="Game settings">
             <button onClick={() => setShowSettings(!showSettings)}>
               Config
             </button>
@@ -1201,27 +1202,29 @@ export default function JeopardyGame() {
           </div>
 
           {/* Data group: export / import / cloud */}
-          <div className="ctrl-group">
+          <div className="ctrl-group" role="group" aria-label="Board files">
             <button className="export-button" onClick={exportGameBoard}>
               Export
             </button>
-            <label className="import-button">
+            <button className="import-button" onClick={() => importFileRef.current?.click()}>
               Import
+            </button>
               <input
+                ref={importFileRef}
                 type="file"
                 accept=".json"
                 onChange={importGameBoard}
                 style={{ display: 'none' }}
               />
-            </label>
+          </div>
             {authUser ? (
-              <>
+              <div className="ctrl-group" role="group" aria-label="Saved boards">
                 <button className="cloud-btn" onClick={openBoards}>My Boards</button><a className="cloud-btn" href="/import">Import previous boards</a>
                 <button className="cloud-btn" onClick={openSaveDialog}>
                   {activeBoard ? 'Save / Rename' : 'Save'}
                 </button>
                 {activeBoard && (
-                  <span className={`cloud-save-state cloud-save-state--${boardSaveState}`}>
+                  <span role="status" className={`cloud-save-state cloud-save-state--${boardSaveState}`}>
                     {boardSaveState === 'saving' && 'Saving…'}
                     {boardSaveState === 'saved' && 'Saved'}
                     {boardSaveState === 'error' && 'Save failed'}
@@ -1229,14 +1232,13 @@ export default function JeopardyGame() {
                   </span>
                 )}
 
-              </>
+              </div>
             ) : (
               null
             )}
-          </div>
 
           {/* Game flow group: main actions */}
-          <div className="ctrl-group">
+          <div className="ctrl-group" role="group" aria-label="Game progression">
             <button className="btn-primary" onClick={activateFinalJeopardy} disabled={gameState.finalJeopardyActive}>
               Final Jeopardy
             </button>

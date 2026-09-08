@@ -157,14 +157,14 @@ button:disabled {
   display: flex;
   justify-content: center;
   align-items: stretch;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
   padding: 10px 14px;
   background: rgba(0, 0, 0, 0.22);
   border-radius: 10px;
   border: 1px solid rgba(255, 215, 0, 0.12);
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .primary-controls {
@@ -174,27 +174,41 @@ button:disabled {
 /* Group buttons, with a subtle divider between groups so the row reads as one bar */
 .ctrl-group {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   gap: 8px;
   padding-right: 10px;
   border-right: 1px solid rgba(255, 215, 0, 0.14);
 }
 .ctrl-group:last-child { border-right: none; padding-right: 0; }
+.game-controls .ctrl-group + .ctrl-group { padding-left: 0; }
+.game-controls .ctrl-group::before { display: none; }
 
 /* One coordinated style for every toolbar control */
 .game-controls button,
+.game-controls a.cloud-btn,
 .game-controls .import-button,
 .game-controls .theme-selector {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 38px;
-  padding: 0 14px;
-  font-size: 1.00rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  min-height: 44px;
+  height: auto;
+  max-width: 100%;
+  padding: 10px 12px;
+  font-family: Arial, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  text-decoration: none;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
   border-radius: 6px;
   border: 1px solid rgba(255, 215, 0, 0.45);
   background: rgba(13, 20, 60, 0.9);
@@ -204,10 +218,22 @@ button:disabled {
   transition: background-color 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
 }
 .game-controls button:hover,
+.game-controls a.cloud-btn:hover,
 .game-controls .import-button:hover {
   background: rgba(30, 42, 110, 0.95);
   border-color: var(--jeopardy-gold);
   transform: translateY(-1px);
+}
+.game-controls :is(button, a, select):focus-visible,
+.suite-account a:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+.game-controls .cloud-save-state {
+  font: 0.8125rem/1.4 Arial, sans-serif;
+  padding: 6px 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 /* Accent only the two semantic actions so intent still reads, without style chaos */
 .game-controls .btn-primary {
@@ -1305,14 +1331,29 @@ button:disabled {
   
   .game-controls {
     flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 6px;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
   }
 
-  .ctrl-group {
+  .game-controls .ctrl-group {
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-start;
+    border: 0;
+    padding: 0;
+  }
+
+  .game-controls .ctrl-group + .ctrl-group {
+    border-top: 1px solid rgba(255, 215, 0, 0.18);
+    padding-top: 8px;
+  }
+
+  .game-controls .ctrl-group > :is(button, a, select) {
+    flex: 1 1 auto;
+  }
+
+  .game-controls .cloud-save-state {
+    flex-basis: 100%;
   }
 
   .ctrl-group + .ctrl-group {
