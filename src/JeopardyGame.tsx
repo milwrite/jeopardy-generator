@@ -1163,7 +1163,7 @@ export default function JeopardyGame() {
   };
 
   // Full game render
-  if(hydrating)return <main className="suite-loading"><a href="/auth/start?next=/">CUNY Login</a><p role="status">{saveStatus||'Opening game…'}</p></main>;
+  if(hydrating)return <main className="suite-loading"><nav className="suite-account" aria-label="CUNY account"><a href="/auth/start?next=/">CUNY Login</a></nav><p role="status">{saveStatus||'Opening game…'}</p></main>;
 
   return (
     <div className={`jeopardy-game ${gameTheme}`}>

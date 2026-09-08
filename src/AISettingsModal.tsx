@@ -744,7 +744,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           const response = await fetch(apiEndpoints[aiProvider], {
             ...(apiConfigs[aiProvider] as RequestInit),
             mode: 'cors',
-            credentials: 'omit',
+            credentials: useProxy ? 'same-origin' : 'omit',
           });
 
           if (!response.ok) {
@@ -769,6 +769,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             }
 
             if (response.status === 401 || response.status === 403) {
+              if(useProxy){const error=await response.json().catch(()=>({}));throw new Error(error.error?.message||'CUNY Login required.');}
               throw new Error(
                 `Authentication failed: ${response.status} ${response.statusText}. Please check that your API key is valid, has not expired, and has the correct format.`
               );
