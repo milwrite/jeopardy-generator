@@ -3,9 +3,12 @@ export const WORKERS_AI_MODEL = DEFAULT_GAME_MODEL;
 export const WORKERS_AI_MODELS = GAME_MODELS;
 export const isHostedSuite = () => typeof window !== 'undefined' && window.location.hostname.endsWith('.ailab-452.workers.dev');
 
-export function configuredModelId(saved: string | null, hosted: boolean, useProxy: boolean): string {
+export function configuredModelId(saved: string | null, hosted: boolean, useProxy: boolean, refreshDefault = false): string {
   const choice = gameModel(saved?.trim() || '');
-  if (hosted && useProxy) return choice?.id || DEFAULT_GAME_MODEL;
+  if (hosted && useProxy) {
+    if (refreshDefault && choice?.id === 'deepseek-v4.1-flash') return DEFAULT_GAME_MODEL;
+    return choice?.id || DEFAULT_GAME_MODEL;
+  }
   return choice?.provider === 'openrouter' ? choice.upstream : 'mistralai/mistral-small-2603';
 }
 

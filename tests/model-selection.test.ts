@@ -30,3 +30,10 @@ test('choices are a Featured subset plus the two explicit additions',()=>{
   assert.ok(WORKERS_AI_MODELS.every(m=>featured.has(m.id)||extras.has(m.id)));
   assert.ok(WORKERS_AI_MODELS.some(m=>m.id==='minimax-m3'));
 });
+
+test('the old default migrates once while other and later explicit choices remain selected',()=>{
+  assert.equal(configuredModelId('deepseek-v4.1-flash',true,true,true),'mistral-small-2603');
+  assert.equal(configuredModelId('deepseek-v4.1-flash',true,true,false),'deepseek-v4.1-flash');
+  assert.equal(configuredModelId('minimax-m3',true,true,true),'minimax-m3');
+  assert.equal(configuredModelId('deepseek/deepseek-v4.1-flash',true,false,true),'deepseek/deepseek-v4.1-flash');
+});

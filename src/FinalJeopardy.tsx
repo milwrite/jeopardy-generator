@@ -25,7 +25,11 @@ async function generateFinalClue(controller: AbortController): Promise<FJClue> {
 
   let content = '';
   const useProxy = g('jeopardy_ai_provider', 'openrouter') === 'openrouter' && !g('jeopardy_api_key');
-  const model = configuredModelId(g('jeopardy_model_id'), isHostedSuite(), useProxy);
+  const model = configuredModelId(g('jeopardy_model_id'), isHostedSuite(), useProxy, g('jeopardy_fast_default_v1') !== 'applied');
+  if (isHostedSuite() && useProxy) {
+    localStorage.setItem('jeopardy_model_id', model);
+    localStorage.setItem('jeopardy_fast_default_v1', 'applied');
+  }
   if (g('jeopardy_ai_provider', 'openrouter') === 'openrouter') {
     const r = await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
       signal: controller.signal,
