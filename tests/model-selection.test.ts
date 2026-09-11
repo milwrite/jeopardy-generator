@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { generationBudget } from '../src/gameModels';
 import { configuredModelId, WORKERS_AI_MODEL, WORKERS_AI_MODELS, getOpenRouterModelOptions, getOpenRouterBoardResponseFormat } from '../src/openRouterModels';
+test('MiniMax gets reasoning room for Final without reducing full-board budgets',()=>{
+  assert.equal(generationBudget('minimax-m3',600),2048);
+  assert.equal(generationBudget('minimax-m3',8000),8000);
+  assert.equal(generationBudget('deepseek-v4.1-flash',600),600);
+});
 test('new sessions and retired choices use the current Featured default',()=>{
-  assert.equal(WORKERS_AI_MODEL,'deepseek-v4.1-flash');
+  assert.equal(WORKERS_AI_MODEL,'mistral-small-2603');
   assert.equal(configuredModelId(null,true,true),WORKERS_AI_MODEL);
   assert.equal(configuredModelId('@cf/moonshotai/kimi-k2.6',true,true),WORKERS_AI_MODEL);
-  assert.equal(configuredModelId(null,true,false),'deepseek/deepseek-v4.1-flash');
+  assert.equal(configuredModelId(null,true,false),'mistralai/mistral-small-2603');
 });
 test('saved supported routes normalize without changing the selected model',()=>{
   assert.equal(configuredModelId('@cf/qwen/qwen3.8-27b',true,true),'qwen3.8-27b');

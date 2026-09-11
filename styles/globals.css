@@ -22,7 +22,7 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
-  font-family: 'Arial', sans-serif;
+  font-family: var(--font-ui, Arial), sans-serif;
   margin: 0;
   padding: 0;
 }
@@ -198,7 +198,7 @@ button:disabled {
   height: auto;
   max-width: 100%;
   padding: 10px 12px;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.875rem;
   line-height: 1.4;
   font-weight: 600;
@@ -940,7 +940,7 @@ button:disabled {
   color: white;
   border: 2px solid #4a90e2;
   border-radius: 4px;
-  font-family: 'Arial', sans-serif;
+  font-family: var(--font-ui, Arial), sans-serif;
   resize: vertical;
 }
 
@@ -1689,7 +1689,7 @@ button:disabled {
 }
 
 .ai-settings-subtitle {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.90rem;
   color: #00e5ff;
   margin: 4px 0 0;
@@ -1727,7 +1727,7 @@ button:disabled {
 
 .provider-tab {
   flex: 1;
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 1.02rem;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -1766,7 +1766,7 @@ button:disabled {
 }
 
 .ai-field-label {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.90rem;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -1784,7 +1784,7 @@ button:disabled {
 }
 
 .ai-field-saved {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.85rem;
   color: #00c853;
   letter-spacing: 0.04em;
@@ -1803,7 +1803,7 @@ button:disabled {
   border: 1px solid #1a3a6a;
   border-radius: 6px;
   color: #e0ecff;
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 1.06rem;
   padding: 10px 14px;
   outline: none;
@@ -1841,7 +1841,7 @@ button:disabled {
 }
 
 .model-chip-group-label {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.78rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1856,7 +1856,7 @@ button:disabled {
 }
 
 .model-chip {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.90rem;
   padding: 5px 10px;
   background: #0b1e42;
@@ -1880,7 +1880,7 @@ button:disabled {
 
 /* Ollama Note */
 .ai-ollama-note {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.94rem;
   color: #3a6090;
   background: rgba(0, 100, 200, 0.08);
@@ -1927,7 +1927,7 @@ button:disabled {
 }
 
 .temp-seg-val {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 1.06rem;
   font-weight: 600;
   color: #8ab0d8;
@@ -1952,7 +1952,7 @@ button:disabled {
 }
 
 .ai-char-count {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 0.81rem;
   color: #2a4a6a;
 }
@@ -1963,7 +1963,7 @@ button:disabled {
   border: 1px solid #1a3a6a;
   border-radius: 6px;
   color: #cce0ff;
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 1.00rem;
   line-height: 1.6;
   padding: 12px 14px;
@@ -1982,7 +1982,7 @@ button:disabled {
 
 /* Test Result */
 .ai-test-result {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 1.00rem;
   padding: 10px 14px;
   border-radius: 6px;
@@ -2095,7 +2095,7 @@ button:disabled {
 }
 
 .cloud-btn {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -2130,14 +2130,14 @@ button:disabled {
   border-color: #ef4444;
 }
 .cloud-username {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 11px;
   color: #7eb3f7;
   opacity: 0.7;
   padding: 0 4px;
 }
 .cloud-save-state {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 10px;
   color: #7eb3f7;
   white-space: nowrap;
@@ -2205,7 +2205,7 @@ button:disabled {
   margin-bottom: 20px;
 }
 .cloud-modal-tab {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 12px;
   font-weight: 600;
   padding: 6px 16px;
@@ -2228,7 +2228,7 @@ button:disabled {
   gap: 12px;
 }
 .cloud-modal-input {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 13px;
   padding: 10px 14px;
   background: #071428;
@@ -2286,13 +2286,13 @@ button:disabled {
   cursor: not-allowed;
 }
 .cloud-modal-error {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 12px;
   color: #f87171;
   margin: 0;
 }
 .cloud-modal-note {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 11px;
   color: #3a6a9a;
   margin: 4px 0 0;
@@ -2335,7 +2335,7 @@ button:disabled {
   min-width: 0;
 }
 .boards-item-name {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 13px;
   color: #c8dcff;
   white-space: nowrap;
@@ -2343,7 +2343,7 @@ button:disabled {
   text-overflow: ellipsis;
 }
 .boards-item-meta {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 10px;
   color: #7eb3f7;
   white-space: nowrap;
@@ -2351,7 +2351,7 @@ button:disabled {
   text-overflow: ellipsis;
 }
 .boards-item-date {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 10px;
   color: #3a6a9a;
 }
@@ -2361,7 +2361,7 @@ button:disabled {
   flex-shrink: 0;
 }
 .boards-btn {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 12px;
@@ -2421,7 +2421,7 @@ button:disabled {
 }
 
 .pw-strength-label {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -2441,7 +2441,7 @@ button:disabled {
 }
 
 .pw-requirements li {
-  font-family: var(--font-mono, 'IBM Plex Mono'), monospace;
+  font-family: var(--font-ui, Arial), sans-serif;
   font-size: 11px;
   color: #3a6a9a;
   transition: color 0.15s;
@@ -2470,4 +2470,135 @@ button:disabled {
   /* Prevent Safari input zoom without restricting reader-controlled zoom. */
   input:not([type=checkbox]):not([type=range]), select, textarea { font-size: 16px !important; }
   .ai-settings-panel { max-height: 92dvh; }
+}
+
+/* Shared type, controls and responsive layout. */
+:root { --text-primary: #f2f5ff; --text-secondary: #becde5; }
+body { font-size: 1rem; line-height: 1.5; }
+.jeopardy-game, .ai-settings-modal, .cloud-modal-overlay {
+  font-family: var(--font-ui, Arial), sans-serif;
+}
+:is(h1, h2, h3, .category-title, .question-value, .game-title, .fj-category) {
+  font-family: var(--font-display, 'Arial Narrow'), sans-serif;
+  letter-spacing: .025em;
+  line-height: 1.15;
+}
+button, input, select, textarea, summary, .cloud-btn, .boards-btn {
+  font-family: var(--font-ui, Arial), sans-serif;
+  font-size: 1rem;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+}
+button, select, summary, .cloud-btn, .boards-btn {
+  min-height: 44px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+button { white-space: normal; }
+:is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+input, select, textarea { font-size: 1rem; }
+input::placeholder, textarea::placeholder { color: #9fb1ce; opacity: 1; }
+button:disabled { opacity: .55; }
+.btn-ghost { color: var(--text-secondary); }
+.game-title { font-size: clamp(2.5rem, 5vw, 4rem); margin: 0 0 20px; }
+.jeopardy-game { width: 100%; max-width: 1600px; padding: 0 24px; }
+.game-board { padding: clamp(16px, 2vw, 28px); }
+.game-controls { position: relative; padding: 0; gap: 10px; border: 0; background: none; margin: 0 0 20px; align-items: center; }
+.game-controls > button, .control-menu > summary {
+  font: 600 1rem/1.4 var(--font-ui, Arial), sans-serif;
+  padding: 10px 20px;
+  min-height: 44px;
+}
+.control-menu { position: relative; }
+.control-menu > summary {
+  cursor: pointer; list-style: none; color: var(--text-primary);
+  background: #112d60; border: 1px solid #6680ad; display: flex; gap: 20px; align-items: center; justify-content: space-between;
+}
+.control-menu > summary::-webkit-details-marker { display: none; }
+.control-menu[open] > summary { border-color: #ffd700; }
+.control-menu-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 70;
+  width: 280px; padding: 16px; background: #07162e; border: 1px solid #6580ab; border-radius: 12px;
+  box-shadow: 0 12px 32px #0008; display: grid; gap: 6px;
+  max-height: min(70dvh, 600px); overflow-y: auto;
+}
+.control-menu-panel h2 { margin: 12px 4px 6px; font-size: 1.125rem; color: #bccde6; }
+.control-menu-panel h2:first-child { margin-top: 0; }
+.game-controls .control-menu-panel :is(button, a, select) {
+  display: flex; align-items: center; justify-content: flex-start; width: 100%;
+  font: 500 1rem/1.4 var(--font-ui, Arial), sans-serif;
+  color: #f2f5ff; border: 1px solid transparent; background: #12284d; text-decoration: none;
+  min-height: 44px; padding: 10px 12px; border-radius: 8px; text-align: left;
+}
+.game-controls .control-menu-panel :is(button, a):hover { background: #203e6a; border-color: #87a2ca; }
+.game-controls .control-menu-panel .btn-danger { color: #ffc0c0; border-color: #91565d; }
+.control-menu-label { color: #becde5; font-size: 1rem; padding: 6px 4px 0; }
+.game-controls .cloud-save-state { color: #d3e1f6; font: 400 .9375rem/1.4 var(--font-ui, Arial), sans-serif; }
+.suite-account { font: 500 .9375rem/1.4 var(--font-ui, Arial), sans-serif; }
+.suite-account a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 10px; opacity: 1; color: #e3ebf8; }
+.ai-settings-panel { max-width: 620px; padding: 24px; max-height: calc(100dvh - 32px); color: var(--text-primary); }
+.ai-settings-title { font-size: 2rem; text-transform: none; }
+.ai-settings-close { width: 44px; height: 44px; padding: 0; color: #e3ebf8; }
+.ai-field-label, .topic-label { display: block; font: 600 1rem/1.4 var(--font-ui, Arial), sans-serif; color: #e0e9f8; text-transform: none; letter-spacing: normal; margin-bottom: 6px; }
+.topic-label { font-size: .9375rem; font-weight: 500; color: #becde5; }
+.ai-field-group { margin-bottom: 20px; }
+.ai-input, .ai-input:focus { font: 400 1rem/1.5 var(--font-ui, Arial), sans-serif; color: #f2f5ff; min-height: 46px; padding: 10px 12px; border-color: #657ea4; }
+.ai-optional, .model-choice-note, .ai-ollama-note, .ai-test-result { font: 400 1rem/1.5 var(--font-ui, Arial), sans-serif; color: #c0cee5; letter-spacing: normal; text-transform: none; }
+.category-topics { border: 0; padding: 0; min-width: 0; }
+.category-topics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.generation-options { border-block: 1px solid #344968; padding: 8px 0; margin: 12px 0; }
+.generation-options > summary { display: flex; align-items: center; cursor: pointer; color: #d5e2f7; padding: 8px 4px; }
+.generation-options[open] > summary { margin-bottom: 12px; }
+.generation-options .btn-ghost { margin: 6px 0; }
+.ai-btn-generate { font: 600 1.0625rem/1.4 var(--font-ui, Arial), sans-serif; letter-spacing: normal; text-transform: none; min-height: 48px; box-shadow: none; }
+.ai-action-footer { padding-top: 8px; border: 0; }
+.ai-test-result.error { color: #ffc0c0; border-color: #9b555e; }
+.gen-overlay { padding: 24px; }
+.gen-title { font: 700 1.75rem/1.2 var(--font-display, 'Arial Narrow'), sans-serif; color: #ffe36a; margin-bottom: 18px; }
+.gen-progress-status, .gen-progress-pct, .gen-overlay p { font-size: 1rem; line-height: 1.5; }
+.gen-cancel { font: 600 1rem/1.4 var(--font-ui, Arial), sans-serif; text-transform: none; letter-spacing: normal; }
+.cloud-modal, .boards-modal, .player-settings-modal, .question-modal-content { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.cloud-modal :is(label, input, button), .boards-modal :is(button, input), .boards-btn { font-size: 1rem; }
+.boards-item-name { font-size: 1.125rem; white-space: normal; }
+.boards-item-meta, .boards-item-date, .cloud-field-label, .cloud-label, .cloud-error, .cloud-success { font-size: .9375rem; color: #c2d0e6; }
+.fj-sub, .fj-clue, .fj-answer, .clue-text, .answer-text { font-family: var(--font-ui, Arial), sans-serif; line-height: 1.5; }
+@media (max-width: 600px) {
+  .jeopardy-game { max-width: 100%; padding: 0 8px; }
+  .game-board { padding: 16px 10px; }
+  .game-controls { gap: 8px; display: grid; grid-template-columns: 1.25fr 1fr 1fr; }
+  .game-controls > button, .control-menu > summary { width: 100%; padding: 10px 8px; gap: 8px; }
+  .control-menu { position: static; min-width: 0; }
+  .control-menu-panel { top: 52px; left: 0; right: 0; width: auto; }
+  .game-controls > .cloud-save-state { grid-column: 1 / -1; text-align: center; padding: 0; }
+  .ai-settings-modal { padding: 8px; }
+  .ai-settings-panel { max-height: calc(100dvh - 16px); padding: 20px 16px; }
+  .category-topics-grid { gap: 10px; }
+  .suite-account { top: 4px; right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+.board-scroll { overflow-x: auto; scrollbar-width: auto; scrollbar-color: #93acd1 #102f67; padding-bottom: 8px; }
+.category-header { font-family: var(--font-display, 'Arial Narrow'), sans-serif; font-size: 1.25rem; line-height: 1.2; min-height: 76px; max-height: none; padding: 12px 8px; overflow-wrap: anywhere; }
+.question-cell, .questions-row:last-child .question-cell { font-family: var(--font-display, 'Arial Narrow'), sans-serif; font-size: clamp(1.75rem, 3vw, 2.75rem); line-height: 1.15; }
+.question-content { width: min(800px, calc(100% - 24px)); padding: clamp(18px, 4vw, 32px); }
+.question-text { font-size: clamp(1.25rem, 3vw, 1.75rem); line-height: 1.5; }
+.question-view { z-index: 100; }
+.cloud-modal-close { color: #cad8ee; min-width: 44px; }
+.cloud-modal-input { font-size: 1rem; border-color: #647ea7; }
+.cloud-modal-subtitle, .cloud-modal-note, .cloud-modal-error, .cloud-modal-success { font-size: 1rem; color: #c1d0e8; }
+@media (max-width: 768px) {
+  .board-grid { min-width: 660px; }
+  .categories-row, .questions-row { gap: 8px; }
+  .category-header { font-size: 1.125rem; min-height: 76px; }
+  .question-cell, .questions-row:last-child .question-cell { min-height: 72px; height: auto; font-size: 2rem; }
+  .scoreboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; align-items: stretch; }
+  .scoreboard .player { width: auto; max-width: none; margin: 0; padding: 10px 6px; }
+  .player-name { font-size: 1rem; overflow-wrap: anywhere; }
+  .player-score { font-size: 1.5rem; }
 }

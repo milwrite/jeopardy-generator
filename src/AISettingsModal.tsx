@@ -14,17 +14,10 @@ import {
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
 import { parseGeneratedBoard, waitForRetry } from './generatedBoard';
-import { gameModel } from './gameModels';
+import { gameModel, generationBudget } from './gameModels';
 
 const DEFAULT_SYSTEM_MESSAGE =
-  'Create a Jeopardy! game board. Return ONLY valid JSON — no markdown, no code fences, no commentary — in EXACTLY this shape:\n' +
-  '{"categories":[{"title":"Category Title","questions":[{"value":200,"text":"the clue shown to players","answer":"What is X?"}]}]}\n\n' +
-  'Rules:\n' +
-  '- Each category has exactly 5 questions with values 200, 400, 600, 800, 1000.\n' +
-  '- "text" is the clue (a declarative statement). "answer" is the response phrased as a question ("What is..."/"Who is...").\n' +
-  '- Clues are specific with ONE unambiguous answer. NEVER include the answer words in the clue text.\n' +
-  '- Clever category titles; gradual difficulty; factually accurate; do not repeat concepts.\n' +
-  'Output the single JSON object and nothing else.';
+  'Write accurate, concise Jeopardy clues with one unambiguous answer each. Clues are declarative statements; answers are phrased as questions. Do not reveal the answer in its clue. Return only the requested JSON.';
 
 interface AISettingsModalProps {
   signedIn: boolean;
@@ -203,9 +196,33 @@ export default function AISettingsModal({
   const [generationStatus, setGenerationStatus] = useState('Waiting for generated clues…');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [testCooldown, setTestCooldown] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
   const activeGeneration = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    panel?.querySelector<HTMLElement>('select, input, button')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (activeGeneration.current) activeGeneration.current.abort(new Error('Generation cancelled. Your current board is unchanged.'));
+        else onClose();
+      }
+      if (event.key !== 'Tab' || !panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary'))
+        .filter(element => element.getClientRects().length > 0 && !element.closest('[inert]'));
+      const first = focusable[0]; const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    panel?.addEventListener('keydown', trapFocus);
+    return () => { panel?.removeEventListener('keydown', trapFocus); previousFocus?.focus(); };
+  }, []);
+  useEffect(() => {
+    const form = panelRef.current?.querySelector<HTMLElement>('.generation-form');
+    if (form) form.inert = isGenerating;
+    if (isGenerating) panelRef.current?.querySelector<HTMLElement>('.gen-cancel')?.focus();
+  }, [isGenerating]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   useEffect(() => () => activeGeneration.current?.abort(new Error('Generation cancelled.')), []);
   useEffect(() => {
@@ -260,7 +277,7 @@ export default function AISettingsModal({
 
       const storedModelId = localStorage.getItem('jeopardy_model_id');
       const savedModelId = configuredModelId(storedModelId, isHostedSuite(), !savedKey);
-      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. DeepSeek V4.1 Flash is selected for new generations.');
+      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. Mistral Small 4 is selected for new generations.');
       if (savedModelId) {
         const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
         setModelId(normalizedModelId);
@@ -345,9 +362,9 @@ export default function AISettingsModal({
                     }),
               },
               body: JSON.stringify({
-                model: modelId || 'gpt-oss-120b',
+                model: modelId || WORKERS_AI_MODEL,
                 messages: [{ role: 'user', content: testPrompt }],
-                max_tokens: 50,
+                max_tokens: generationBudget(modelId, 50),
                 temperature: 0.1,
                 ...getOpenRouterModelOptions(modelId),
               }),
@@ -572,19 +589,11 @@ export default function AISettingsModal({
         .map((t, i) => `${i + 1}. ${t.trim() || '(your choice — invent a clever category)'}`)
         .join('\n');
       const anyTopics = categoryTopics.some((t) => t.trim());
-      const prompt = `Create a Jeopardy! game board with EXACTLY 6 categories.
-${anyTopics ? `Use these topics, one category each, kept in this order:\n${topicList}` : 'Invent 6 clever, distinct categories.'}
-
-For each category write EXACTLY 5 clues with values 200, 400, 600, 800, 1000, increasing in difficulty.
-- "text" is the clue shown to contestants: a statement or fact, NEVER a question.
-- "answer" is the response phrased as a question ("What is..."/"Who is...").
-- Never include the answer words in the clue text.
-- Mark EXACTLY 2 clues total across the whole board with "dailyDouble": true.
-${difficultyGuidance ? `\nDIFFICULTY ADJUSTMENT GUIDANCE based on player performance:\n${difficultyGuidance}\n` : ''}
-Return ONLY JSON (no markdown, no commentary) in EXACTLY this shape:
-{"categories":[{"title":"Category Name","questions":[{"text":"clue text","answer":"What is X?","value":200,"dailyDouble":false}]}]}
-
-Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dailyDouble:true total.`;
+      const prompt = `Create exactly 6 distinct Jeopardy categories, each with exactly 5 concise clues increasing in difficulty.
+${anyTopics ? `Use these topics in order:\n${topicList}` : 'Choose six varied topics.'}
+${difficultyGuidance ? `Difficulty guidance:\n${difficultyGuidance}` : ''}
+Return only JSON: {"categories":[{"title":"Category","questions":[{"text":"A specific factual statement","answer":"What is X?"}]}]}.
+Include all 30 clues. The game assigns prices and Daily Doubles.`;
 
       const apiEndpoints = {
         openrouter: useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions',
@@ -605,12 +614,12 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
                 }),
           },
           body: JSON.stringify({
-            model: modelId || 'gpt-oss-120b',
+            model: modelId || WORKERS_AI_MODEL,
             messages: [
               { role: 'system', content: systemMessage },
               { role: 'user', content: prompt },
             ],
-            max_tokens: 8000,
+            max_tokens: gameModel(modelId)?.id === 'minimax-m3' ? 8000 : 5000,
             temperature,
             stream: true,
             ...getOpenRouterModelOptions(modelId),
@@ -843,23 +852,12 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
     return () => { active = false; clearInterval(id); };
   }, [aiProvider, ollamaUrl, ollamaModel]);
 
-  const statusStyle = {
-    padding: '10px 14px', borderRadius: 8, marginBottom: 18, fontSize: 18,
-    display: 'flex', alignItems: 'center', gap: 8,
-    background: serverStatus === 'online' ? 'rgba(34,197,94,0.12)'
-      : serverStatus === 'offline' ? 'rgba(239,68,68,0.12)' : 'rgba(148,163,184,0.12)',
-    border: `1px solid ${serverStatus === 'online' ? 'rgba(34,197,94,0.55)'
-      : serverStatus === 'offline' ? 'rgba(239,68,68,0.55)' : 'rgba(148,163,184,0.4)'}`,
-    color: serverStatus === 'online' ? '#15803d'
-      : serverStatus === 'offline' ? '#b91c1c' : '#64748b',
-  } as const;
-
   return (
     <div className="ai-settings-modal" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="ai-settings-panel">
+      <div ref={panelRef} className="ai-settings-panel" role="dialog" aria-modal="true" aria-labelledby="generation-title">
         <div className="ai-settings-header">
           <div>
-            <h2 className="ai-settings-title">Config</h2>
+            <h2 id="generation-title" className="ai-settings-title">New board</h2>
           </div>
           <button className="ai-settings-close" onClick={onClose} aria-label="Close">
             &#x2715;
@@ -889,289 +887,64 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           </div>
         )}
 
-        <div className="provider-tabs" style={{ marginBottom: 14 }}>
-          <button
-            type="button"
-            className={`provider-tab${aiProvider === 'ollama' ? ' active' : ''}`}
-            onClick={() => { setAiProvider('ollama'); setTestResult(null); }}
-          >
-            Local
-          </button>
-          <button
-            type="button"
-            className={`provider-tab${aiProvider === 'openrouter' ? ' active' : ''}`}
-            onClick={() => { setAiProvider('openrouter'); setTestResult(null); }}
-          >
-            {isHostedSuite() && useProxy ? 'CUNY AI' : 'External'}
-          </button>
-        </div>
-
-        {aiProvider === 'ollama' ? (
-          <div style={statusStyle}>
-            {serverStatus === 'online' ? (
-              <span>&#x2713; Connected — <strong>{ollamaModel}</strong> ready on your local model server.</span>
-            ) : serverStatus === 'checking' ? (
-              <span>Checking model server…</span>
-            ) : (
-              <span>&#x2717; Model server offline. Start the local model, then this connects automatically.</span>
-            )}
-          </div>
-        ) : (
-          <div className="ai-provider-panel">
-            <div className="ai-field-group">
-              <label className="ai-field-label" htmlFor="personal-api-key">{isHostedSuite() && useProxy && signedIn && !showKeyInput ? 'CUNY AI Lab' : 'OpenRouter API key'}</label>
-              {isHostedSuite() && !signedIn && <p className="model-choice-note"><a href="/auth/start?next=/">CUNY Login</a> is free, subject to usage limits. Otherwise, enter your own API key.</p>}
-              {useProxy && !showKeyInput && (signedIn || !isHostedSuite()) ? (
-                <div className="ai-key-configured">
-                  <span>{isHostedSuite()?'Included with CUNY Login · No API key needed':'External AI enabled by default'}</span>
-                  <button
-                    type="button"
-                    className="ai-key-change"
-                    onClick={() => { setShowKeyInput(true); setTestResult(null); }}
-                  >
-                    use my key
-                  </button>
-                </div>
-              ) : apiKey && !showKeyInput ? (
-                <div className="ai-key-configured">
-                  <span>Using your API key</span>
-                  <button type="button" className="ai-key-change" onClick={() => setShowKeyInput(true)}>change</button>
-                </div>
-              ) : (
-                <>
-                  <input
-                    id="personal-api-key"
-                    type="password"
-                    value={apiKey}
-                    onChange={(event) => { setShowKeyInput(true); setApiKey(event.target.value); setTestResult(null); }}
-                    placeholder="sk-or-..."
-                    className="ai-input"
-                  />
-                  {apiKey && (
-                    <button
-                      type="button"
-                      className="ai-key-change"
-                      onClick={() => { setShowKeyInput(false); setApiKey(''); setTestResult(null); }}
-                      style={{ marginTop: 6 }}
-                    >
-                      {isHostedSuite() ? 'Use CUNY access instead' : 'Use default proxy instead'}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="ai-field-group">
-              <label className="ai-field-label" htmlFor="generation-model">Model</label>
-              {isHostedSuite() && useProxy ? <>
-                <select id="generation-model" className="ai-input" value={modelId} disabled={!availableModels.length} onChange={event => selectModel(event.target.value)}>
-                  {WORKERS_AI_MODELS.filter(model=>availableModels.includes(model.id)).map(({id, label}) => <option key={id} value={id}>{label}</option>)}
-                </select>
-                <p className="model-choice-note"><a href="https://ailab.gc.cuny.edu/models/" target="_blank" rel="noreferrer">CAIL Featured</a>, plus MiniMax M3 and compact Gemma 4. Applies to the board and Final Jeopardy.</p>
-                {modelId === 'minimax-m3' && <p className="model-choice-note">MiniMax usually takes longer to build a full board.</p>}
-                {modelNotice && <p className="model-choice-note" role="status">{modelNotice}</p>}
-              </> : <div className="model-chip-grid" role="group" aria-label="Model">
-                {OPENROUTER_MODELS.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`model-chip${modelId === id ? ' selected' : ''}`}
-                    aria-pressed={modelId === id}
-                    onClick={() => selectModel(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>}
-            </div>
-          </div>
-        )}
-
-        {false && (aiProvider === 'openrouter' ? (
-          <div className="ai-provider-panel">
-            <div className="ai-field-group">
-              <label className="ai-field-label">{isHostedSuite() && useProxy ? 'CUNY AI Lab' : 'API Key'}</label>
-              <div className="ai-input-row">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(event) => { setApiKey(event.target.value); setTestResult(null); }}
-                  placeholder="sk-or-..."
-                  className="ai-input"
-                />
-                <button
-                  className="ai-eye-toggle"
-                  onClick={() => setShowApiKey((visible) => !visible)}
-                  aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
-                  type="button"
-                >
-                  {showApiKey ? '&#x1F648;' : '&#x1F441;'}
-                </button>
-              </div>
-              {apiKey && <span className="ai-field-saved">&#x2713; Key saved in session</span>}
-            </div>
-
-            <div className="ai-field-group">
-              <label className="ai-field-label">Model</label>
-              <input
-                type="text"
-                value={modelId}
-                onChange={(event) => { setModelId(event.target.value); setTestResult(null); }}
-                placeholder="provider/model-id"
-                className="ai-input"
-              />
-              <div className="model-chip-section">
-                <div className="model-chip-group-label">Gemini 3</div>
-                <div className="model-chip-grid">
-                  {[
-                    'google/gemini-3.1-flash-lite-preview',
-                  ].map((model) => (
-                    <button
-                      key={model}
-                      className={`model-chip${modelId === model ? ' selected' : ''}`}
-                      onClick={() => { setModelId(model); setTestResult(null); }}
-                    >
-                      {model.split('/')[1]}
-                    </button>
-                  ))}
-                </div>
-                <div className="model-chip-group-label">Gemma 4</div>
-                <div className="model-chip-grid">
-                  {[
-                    'google/gemma-4-31b-it',
-                  ].map((model) => (
-                    <button
-                      key={model}
-                      className={`model-chip${modelId === model ? ' selected' : ''}`}
-                      onClick={() => { setModelId(model); setTestResult(null); }}
-                    >
-                      {model.split('/')[1]}
-                    </button>
-                  ))}
-                </div>
-                <div className="model-chip-group-label">MiniMax, Kimi &amp; GLM</div>
-                <div className="model-chip-grid">
-                  {[
-                    'minimax/minimax-m2.7',
-                    'moonshotai/kimi-k2.5',
-                    'z-ai/glm-5-turbo',
-                  ].map((model) => (
-                    <button
-                      key={model}
-                      className={`model-chip${modelId === model ? ' selected' : ''}`}
-                      onClick={() => { setModelId(model); setTestResult(null); }}
-                    >
-                      {model.split('/')[1]}
-                    </button>
-                  ))}
-                </div>
-                <div className="model-chip-group-label">DeepSeek</div>
-                <div className="model-chip-grid">
-                  {[
-                    'deepseek/deepseek-v3.2',
-                    'deepseek/deepseek-r1-0528',
-                  ].map((model) => (
-                    <button
-                      key={model}
-                      className={`model-chip${modelId === model ? ' selected' : ''}`}
-                      onClick={() => { setModelId(model); setTestResult(null); }}
-                    >
-                      {model.split('/')[1]}
-                    </button>
-                  ))}
-                </div>
-                <div className="model-chip-group-label">Qwen 3.5</div>
-                <div className="model-chip-grid">
-                  {[
-                    'qwen/qwen3.5-397b-a17b',
-                    'qwen/qwen3.5-122b-a10b',
-                    'qwen/qwen3.5-35b-a3b',
-                  ].map((model) => (
-                    <button
-                      key={model}
-                      className={`model-chip${modelId === model ? ' selected' : ''}`}
-                      onClick={() => { setModelId(model); setTestResult(null); }}
-                    >
-                      {model.split('/')[1]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="ai-provider-panel">
-            <div className="ai-field-group">
-              <label className="ai-field-label">Server URL</label>
-              <input
-                type="text"
-                value={ollamaUrl}
-                onChange={(event) => { setOllamaUrl(event.target.value); setTestResult(null); }}
-                placeholder="http://localhost:11434"
-                className="ai-input"
-              />
-            </div>
-            <div className="ai-field-group">
-              <label className="ai-field-label">Model Name</label>
-              <input
-                type="text"
-                value={ollamaModel}
-                onChange={(event) => { setOllamaModel(event.target.value); setTestResult(null); }}
-                placeholder="llama2, mistral, gemma, mixtral"
-                className="ai-input"
-              />
-            </div>
-            <div className="ai-ollama-note">
-              Start server: <code>ollama serve</code> &nbsp;|&nbsp; Pull model: <code>ollama pull llama2</code>
-            </div>
-          </div>
-        ))}
-
-        <div className="ai-field-group">
-          <label className="ai-field-label">Temperature</label>
-          <div className="temp-segmented">
-            {([
-              [0.0, 'Precise'],
-              [0.3, 'Balanced'],
-              [0.5, 'Standard'],
-              [0.7, 'Creative'],
-              [1.0, 'Wild'],
-            ] as [number, string][]).map(([value, label]) => (
-              <button
-                key={value}
-                className={`temp-seg-btn${temperature === value ? ' active' : ''}`}
-                onClick={() => setTemperature(value)}
-                type="button"
-              >
-                <span className="temp-seg-val">{value.toFixed(1)}</span>
-                <span className="temp-seg-label">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="ai-field-group">
-          <label className="ai-field-label">Category topics — one per column</label>
+        <div className="generation-form">
+        {aiProvider === 'openrouter' && <div className="ai-field-group">
+          <label className="ai-field-label" htmlFor="generation-model">Model</label>
+          <select id="generation-model" className="ai-input" value={modelId}
+            disabled={isHostedSuite() && useProxy && !availableModels.length}
+            onChange={event => selectModel(event.target.value)}>
+            {(isHostedSuite() && useProxy ? WORKERS_AI_MODELS.filter(model => availableModels.includes(model.id)) : OPENROUTER_MODELS)
+              .map(({id, label}) => <option key={id} value={id}>{label}{id === WORKERS_AI_MODEL || id === gameModel(WORKERS_AI_MODEL)?.upstream ? ' (recommended)' : ''}</option>)}
+          </select>
+          {modelId === 'minimax-m3' && <p className="model-choice-note">MiniMax usually takes longer to build a full board.</p>}
+          {modelNotice && <p className="model-choice-note" role="status">{modelNotice}</p>}
+        </div>}
+        <fieldset className="ai-field-group category-topics">
+          <legend className="ai-field-label">Category topics</legend>
+          <p className="ai-optional">Choose up to six topics, or leave them blank for a surprise.</p>
           <div className="category-topics-grid">
-            {categoryTopics.map((topic, i) => (
-              <input
-                key={i}
-                type="text"
-                value={topic}
-                onChange={(event) =>
-                  setCategoryTopics((prev) => prev.map((t, j) => (j === i ? event.target.value : t)))
-                }
-                placeholder={`Category ${i + 1}`}
-                className="ai-input"
-                aria-label={`Category ${i + 1} topic`}
-              />
-            ))}
+            {categoryTopics.map((topic, index) => <label key={index}>
+              <span className="topic-label">Topic {index + 1}</span>
+              <input type="text" value={topic} onChange={event => setCategoryTopics(previous => previous.map((value, i) => i === index ? event.target.value : value))}
+                className="ai-input" placeholder="Any topic" aria-label={`Category ${index + 1} topic`} />
+            </label>)}
           </div>
-          <span className="ai-optional">Leave any field blank to let the model pick that category.</span>
-        </div>
+        </fieldset>
+        <details className="generation-options">
+          <summary>More options</summary>
+          <div className="ai-field-group">
+            <label className="ai-field-label" htmlFor="generation-provider">Connection</label>
+            <select id="generation-provider" className="ai-input" value={aiProvider} onChange={event => { setAiProvider(event.target.value as AIProvider); setTestResult(null); }}>
+              <option value="openrouter">{isHostedSuite() && useProxy ? 'CUNY AI' : 'OpenRouter'}</option>
+              <option value="ollama">Local model</option>
+            </select>
+          </div>
+          {aiProvider === 'ollama' ? <>
+            <p className="model-choice-note" role="status">{serverStatus === 'online' ? 'Local model connected.' : serverStatus === 'checking' ? 'Checking local model…' : 'Local model is offline.'}</p>
+            <label className="ai-field-label" htmlFor="local-model">Model name</label>
+            <input id="local-model" className="ai-input" value={ollamaModel} onChange={event => setOllamaModel(event.target.value)} />
+            <label className="ai-field-label" htmlFor="local-server">Server URL</label>
+            <input id="local-server" className="ai-input" value={ollamaUrl} onChange={event => setOllamaUrl(event.target.value)} />
+          </> : <div className="ai-field-group">
+            {useProxy && !showKeyInput && signedIn ? <button className="btn-ghost" onClick={() => setShowKeyInput(true)}>Use my API key</button> : <>
+              <label className="ai-field-label" htmlFor="personal-api-key">OpenRouter API key</label>
+              <input id="personal-api-key" type="password" value={apiKey} onChange={event => { setShowKeyInput(true); setApiKey(event.target.value); setTestResult(null); }} className="ai-input" placeholder="sk-or-…" />
+              {(apiKey || showKeyInput) && <button className="btn-ghost" onClick={() => { setShowKeyInput(false); setApiKey(''); setTestResult(null); }}>Use CUNY access</button>}
+            </>}
+          </div>}
+          <div className="ai-field-group">
+            <label className="ai-field-label" htmlFor="generation-temperature">Clue style</label>
+            <select id="generation-temperature" className="ai-input" value={temperature} onChange={event => setTemperature(Number(event.target.value))}>
+              <option value={0}>Precise</option><option value={0.3}>Balanced</option><option value={0.5}>Standard</option><option value={0.7}>Creative</option><option value={1}>Wild</option>
+            </select>
+          </div>
+          <button className="btn-ghost" onClick={testApiKey} disabled={isTesting || testCooldown > 0}>{isTesting ? 'Testing…' : 'Test connection'}</button>
+        </details>
+        {isHostedSuite() && useProxy && !signedIn && <p className="model-choice-note"><a href="/auth/start?next=/">CUNY Login</a> to generate a board, or use your API key in More options.</p>}
 
         {testResult && (
-          <div className={`ai-test-result${testResult.success ? ' success' : ' error'}`}>
-            <span className="ai-test-icon">{testResult.success ? '&#x2713;' : '&#x2717;'}</span>
+          <div role="status" className={`ai-test-result${testResult.success ? ' success' : ' error'}`}>
+
             {testResult.message}
           </div>
         )}
@@ -1180,6 +953,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || (isHostedSuite() && useProxy && !availableModels.length)} type="button">
             {isGenerating ? 'Generating…' : 'Generate Board'}
           </button>
+        </div>
         </div>
       </div>
     </div>

@@ -9,7 +9,10 @@ export const GAME_MODELS = [
   { id: 'minimax-m3', label: 'MiniMax M3', group: 'Also available', provider: 'openrouter', upstream: 'minimax/minimax-m3' },
   { id: 'gemma-4-26b-a4b-it', label: 'Gemma 4 · 26B, 4B active', group: 'Compact model', provider: 'workers-ai', upstream: '@cf/google/gemma-4-26b-a4b-it' },
 ] as const;
-export const DEFAULT_GAME_MODEL = 'deepseek-v4.1-flash';
+export const DEFAULT_GAME_MODEL = 'mistral-small-2603';
 export function gameModel(id: string) {
   return GAME_MODELS.find(model => model.id === id || model.upstream === id);
+}
+export function generationBudget(id: string, requested: number) {
+  return gameModel(id)?.id === 'minimax-m3' ? Math.max(2048, requested) : requested;
 }

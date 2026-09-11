@@ -6,7 +6,7 @@ export const isHostedSuite = () => typeof window !== 'undefined' && window.locat
 export function configuredModelId(saved: string | null, hosted: boolean, useProxy: boolean): string {
   const choice = gameModel(saved?.trim() || '');
   if (hosted && useProxy) return choice?.id || DEFAULT_GAME_MODEL;
-  return choice?.provider === 'openrouter' ? choice.upstream : 'deepseek/deepseek-v4.1-flash';
+  return choice?.provider === 'openrouter' ? choice.upstream : 'mistralai/mistral-small-2603';
 }
 
 export const OPENROUTER_MODELS = GAME_MODELS.filter(m => m.provider === 'openrouter').map(m => ({id:m.upstream, label:m.label}));

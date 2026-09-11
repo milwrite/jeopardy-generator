@@ -148,6 +148,19 @@ const QuestionCell = memo(function QuestionCell({
 
 export default function JeopardyGame() {
   const importFileRef = useRef<HTMLInputElement>(null);
+  const closeOtherMenus = (event: React.SyntheticEvent<HTMLDetailsElement>) => {
+    if (!event.currentTarget.open) return;
+    event.currentTarget.parentElement?.querySelectorAll<HTMLDetailsElement>('.control-menu[open]').forEach(menu => {
+      if (menu !== event.currentTarget) menu.open = false;
+    });
+  };
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => document.querySelectorAll<HTMLDetailsElement>('.control-menu[open]').forEach(menu => {
+      if (!menu.contains(event.target as Node)) menu.open = false;
+    });
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, []);
   // Game state
   // Player count state
   const [playerCount, setPlayerCount] = useState<number>(3);
@@ -1172,81 +1185,52 @@ export default function JeopardyGame() {
       <div className="game-board">
         <h1 className="game-title">Jeopardy!</h1>
 
-        {/* Settings and controls */}
         <div className="game-controls" role="group" aria-label="Game controls">
-          {/* Board group: editing tools */}
-          <div className="ctrl-group" role="group" aria-label="Board setup">
-            <button onClick={() => setShowEditor(!showEditor)}>
-              {showEditor ? 'Close Editor' : 'Edit Board'}
-            </button>
-            <button onClick={openPlayerSettings}>
-              Players ({gameState.players.length})
-            </button>
-          </div>
-
-          {/* Settings group: AI config + theme */}
-          <div className="ctrl-group" role="group" aria-label="Game settings">
-            <button onClick={() => setShowSettings(!showSettings)}>
-              Config
-            </button>
-            <select
-              value={gameTheme}
-              onChange={(e) => setGameTheme(e.target.value)}
-              className="theme-selector"
-              aria-label="Theme"
-            >
-              <option value="standard">Standard</option>
-              <option value="dark">Dark</option>
-              <option value="retro">Retro</option>
-            </select>
-          </div>
-
-          {/* Data group: export / import / cloud */}
-          <div className="ctrl-group" role="group" aria-label="Board files">
-            <button className="export-button" onClick={exportGameBoard}>
-              Export
-            </button>
-            <button className="import-button" onClick={() => importFileRef.current?.click()}>
-              Import
-            </button>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept=".json"
-                onChange={importGameBoard}
-                style={{ display: 'none' }}
-              />
-          </div>
-            {authUser ? (
-              <div className="ctrl-group" role="group" aria-label="Saved boards">
-                <button className="cloud-btn" onClick={openBoards}>My Boards</button><a className="cloud-btn" href="/import">Import previous boards</a>
-                <button className="cloud-btn" onClick={openSaveDialog}>
-                  {activeBoard ? 'Save / Rename' : 'Save'}
-                </button>
-                {activeBoard && (
-                  <span role="status" className={`cloud-save-state cloud-save-state--${boardSaveState}`}>
-                    {boardSaveState === 'saving' && 'Saving…'}
-                    {boardSaveState === 'saved' && 'Saved'}
-                    {boardSaveState === 'error' && 'Save failed'}
-                    {boardSaveState === 'conflict' && 'Reload needed'}
-                  </span>
-                )}
-
-              </div>
-            ) : (
-              null
-            )}
-
-          {/* Game flow group: main actions */}
-          <div className="ctrl-group" role="group" aria-label="Game progression">
-            <button className="btn-primary" onClick={activateFinalJeopardy} disabled={gameState.finalJeopardyActive}>
-              Final Jeopardy
-            </button>
-            <button className="btn-danger" onClick={resetGame}>Reset</button>
-          </div>
+          <button className="btn-primary" onClick={() => setShowSettings(true)}>New board</button>
+          <details className="control-menu" onToggle={closeOtherMenus} onKeyDown={event => {
+            if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
+          }}>
+            <summary>Board <span aria-hidden="true">⌄</span></summary>
+            <div className="control-menu-panel" onClick={event => {
+              if ((event.target as HTMLElement).closest('button, a')) event.currentTarget.closest('details')?.removeAttribute('open');
+            }}>
+              <h2>Your board</h2>
+              <button onClick={() => setShowEditor(!showEditor)}>{showEditor ? 'Close editor' : 'Edit clues'}</button>
+              {authUser && <>
+                <button onClick={openBoards}>My boards</button>
+                <button onClick={openSaveDialog}>{activeBoard ? 'Save / rename' : 'Save board'}</button>
+              </>}
+              <h2>Import and export</h2>
+              <button onClick={() => importFileRef.current?.click()}>Import board file</button>
+              <button onClick={exportGameBoard}>Export board file</button>
+              {authUser && <a href="/import">Import previous boards</a>}
+            </div>
+          </details>
+          <details className="control-menu" onToggle={closeOtherMenus} onKeyDown={event => {
+            if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
+          }}>
+            <summary>Game <span aria-hidden="true">⌄</span></summary>
+            <div className="control-menu-panel" onClick={event => {
+              if ((event.target as HTMLElement).closest('button')) event.currentTarget.closest('details')?.removeAttribute('open');
+            }}>
+              <h2>Game setup</h2>
+              <button onClick={openPlayerSettings}>Players ({gameState.players.length})</button>
+              <label className="control-menu-label" htmlFor="game-theme">Theme</label>
+              <select id="game-theme" value={gameTheme} onChange={event => setGameTheme(event.target.value)}>
+                <option value="standard">Standard</option><option value="dark">Dark</option><option value="retro">Retro</option>
+              </select>
+              <h2>Game progress</h2>
+              <button onClick={activateFinalJeopardy} disabled={gameState.finalJeopardyActive}>Final Jeopardy</button>
+              <button className="btn-danger" onClick={resetGame}>Reset game</button>
+            </div>
+          </details>
+          <input ref={importFileRef} type="file" accept=".json" onChange={importGameBoard} style={{ display: 'none' }} />
+          {activeBoard && <span role="status" className={`cloud-save-state cloud-save-state--${boardSaveState}`}>
+            {boardSaveState === 'saving' && 'Saving…'}{boardSaveState === 'saved' && 'Saved'}
+            {boardSaveState === 'error' && 'Save failed'}{boardSaveState === 'conflict' && 'Reload needed'}
+          </span>}
         </div>
-        
-        
+
         {/* AI Settings Modal */}
         {showSettings && (
           <AISettingsModal
@@ -1268,13 +1252,18 @@ export default function JeopardyGame() {
             onCancel={() => setGameState((currentState) => ({ ...currentState, finalJeopardyActive: false }))}
           />
         ) : (
-          <>
+          <div className="board-scroll" role="region" aria-label="Game board, six categories" tabIndex={0}>
+          <div className="board-grid">
             {/* Categories Header */}
             <div className="categories-row">
               {gameState.categories.map((category, categoryIndex) => (
                 <div 
                   key={categoryIndex} 
                   className={`category-header ${showEditor ? 'editable' : ''}`}
+                  role={showEditor ? 'button' : 'heading'}
+                  aria-level={showEditor ? undefined : 2}
+                  tabIndex={showEditor ? 0 : undefined}
+                  onKeyDown={event => { if (showEditor && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); handleEditCategory(categoryIndex); } }}
                   onClick={() => handleEditCategory(categoryIndex)}
                 >
                   {category.title}
@@ -1302,7 +1291,8 @@ export default function JeopardyGame() {
                 ))}
               </div>
             ))}
-          </>
+          </div>
+          </div>
         )}
         
         {/* Selected Question View */}
