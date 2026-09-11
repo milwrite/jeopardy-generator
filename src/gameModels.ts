@@ -13,3 +13,6 @@ export const DEFAULT_GAME_MODEL = 'deepseek-v4.1-flash';
 export function gameModel(id: string) {
   return GAME_MODELS.find(model => model.id === id || model.upstream === id);
 }
+export function generationBudget(id: string, requested: number) {
+  return gameModel(id)?.id === 'minimax-m3' ? Math.max(2048, requested) : requested;
+}

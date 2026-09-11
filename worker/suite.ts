@@ -1,4 +1,5 @@
 import { gameCatalog, resolveGatewayModel } from './model-catalog';
+import { generationBudget } from '../src/gameModels';
 // CUNY session handoff and app-scoped storage. Identity tokens stay in private RPC.
 export type Identity = {ok:true;appJwt:string;gatewayJwt:string;workspaceJwt:string|null};
 export interface SuiteEnv {
@@ -77,6 +78,7 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
    const model=typeof body.model==='string'?await resolveGatewayModel(env.GATEWAY,body.model,request.signal):null;
    if(!model)return json({error:{message:'This model is no longer available. Choose another model in Config.'}},404);
    body.model=model;
+   body.max_tokens=generationBudget(model,Math.min(8000,Math.max(1,Number(body.max_tokens)||8000)));
    // Personal keys are sent by the browser directly to their provider.
    // This included-access endpoint always requires verified CUNY identity.
    const target=TOOLS+'/v1/chat/completions';

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {configuredModelId,isHostedSuite,getOpenRouterModelOptions} from './openRouterModels';
+import {generationBudget} from './gameModels';
 import type { Player } from './jeopardyTypes';
 
 export interface FJClue {
@@ -41,7 +42,7 @@ async function generateFinalClue(): Promise<FJClue> {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 600,
+        max_tokens: generationBudget(model,600),
         ...getOpenRouterModelOptions(model),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.6,
