@@ -26,9 +26,10 @@ test('signed-in requests keep their selected model and use verified CUNY gateway
     IDENTITY:{identities:async()=>({ok:true,appJwt:'app-test',gatewayJwt:'gateway-test',workspaceJwt:null})},
     REQUEST_LIMIT:{limit:async()=>({success:true})},
     GATEWAY:{fetch:async(r:Request)=>{
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'kimi-k2.6',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
       calls++;
       assert.equal(r.headers.get('authorization'),'Bearer gateway-test');
-      assert.equal((await r.json() as {model:string}).model,model);
+      assert.equal((await r.json() as {model:string}).model,'kimi-k2.6');
       return Response.json({model,choices:[]});
     }},
   } as unknown as SuiteEnv;

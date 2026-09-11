@@ -439,6 +439,8 @@ export default function AISettingsModal({
     }
 
     setIsTesting(true);
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(new Error('The model did not respond within 30 seconds. Try another model.')), 30_000);
 
     try {
       const testPrompt = 'Respond with exactly: "API connection successful"';
@@ -446,6 +448,7 @@ export default function AISettingsModal({
       const response =
         aiProvider === 'openrouter'
           ? await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
+              signal: controller.signal,
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -466,6 +469,7 @@ export default function AISettingsModal({
               }),
             })
           : await fetch(`${ollamaUrl}/api/chat`, {
+              signal: controller.signal,
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -554,6 +558,7 @@ export default function AISettingsModal({
 
       setTestResult({ success: false, message: errorMessage });
     } finally {
+      clearTimeout(deadline);
       setIsTesting(false);
       startCooldown(setTestCooldown, 10);
     }
@@ -750,6 +755,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
       let lastError: unknown = null;
 
       while (retries <= maxRetries) {
+        const controller = new AbortController();
+        const deadline = setTimeout(() => controller.abort(new Error('The model did not finish within 90 seconds. Try another model in Config.')), 90_000);
         try {
           if (retries > 0) {
             setGenerationProgress(0);
@@ -758,6 +765,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
 
           const response = await fetch(apiEndpoints[aiProvider], {
             ...(apiConfigs[aiProvider] as RequestInit),
+            signal: controller.signal,
             mode: 'cors',
             credentials: useProxy ? 'same-origin' : 'omit',
           });
@@ -916,6 +924,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           }
 
           throw error;
+        } finally {
+          clearTimeout(deadline);
         }
       }
 

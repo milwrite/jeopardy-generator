@@ -11,6 +11,9 @@ export interface FJClue {
 // Generate one Final Jeopardy clue using whichever model the game is configured
 // for (local vLLM via the shim, or OpenRouter). Best-effort JSON extraction.
 async function generateFinalClue(): Promise<FJClue> {
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(new Error('The model did not respond within 45 seconds. Try another model in Config.')), 45_000);
+  try {
   const g = (k: string, d = '') =>
     (typeof window !== 'undefined' ? localStorage.getItem(k) || d : d);
   const prompt =
@@ -24,6 +27,7 @@ async function generateFinalClue(): Promise<FJClue> {
   const model = configuredModelId(g('jeopardy_model_id'), isHostedSuite(), useProxy);
   if (g('jeopardy_ai_provider', 'openrouter') === 'openrouter') {
     const r = await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
+      signal: controller.signal,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,6 +41,7 @@ async function generateFinalClue(): Promise<FJClue> {
       },
       body: JSON.stringify({
         model,
+        max_tokens: 600,
         ...getOpenRouterModelOptions(model),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.6,
@@ -47,6 +52,7 @@ async function generateFinalClue(): Promise<FJClue> {
     content = d.choices?.[0]?.message?.content || '';
   } else {
     const r = await fetch(`${g('jeopardy_ollama_url', 'http://localhost:11435')}/api/chat`, {
+      signal: controller.signal,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -72,6 +78,9 @@ async function generateFinalClue(): Promise<FJClue> {
     clue: obj.clue || content.trim() || 'No clue generated.',
     answer: obj.answer || '',
   };
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 
 export interface FinalRoundState {phase:'wager'|'clue'|'adjudicate'|'results';wagers:number[];clue:FJClue|null;clueRevealed:boolean;answerRevealed:boolean;correct:boolean[];finalPlayers:Player[]}
