@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { configuredModelId, WORKERS_AI_MODEL, WORKERS_AI_MODELS, getOpenRouterModelOptions, getOpenRouterBoardResponseFormat } from '../src/openRouterModels';
 
-test('new hosted sessions default to Kimi K2.6, without changing direct-key defaults', () => {
-  assert.equal(WORKERS_AI_MODEL, '@cf/moonshotai/kimi-k2.6');
+test('new hosted sessions default to verified DeepSeek Flash, without changing direct-key defaults', () => {
+  assert.equal(WORKERS_AI_MODEL, '@cf/deepseek-ai/deepseek-v4-flash-0731');
   assert.equal(configuredModelId(null, true, true), WORKERS_AI_MODEL);
   assert.equal(configuredModelId('', false, true), 'google/gemini-3.1-flash-lite');
   assert.equal(configuredModelId(null, true, false), 'google/gemini-3.1-flash-lite');

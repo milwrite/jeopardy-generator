@@ -1,9 +1,9 @@
-export const WORKERS_AI_MODEL = '@cf/moonshotai/kimi-k2.6';
+export const WORKERS_AI_MODEL = '@cf/deepseek-ai/deepseek-v4-flash-0731';
 // Exact active catalog IDs checked against CAIL Gateway on 2026-09-08.
 // These are picker suggestions, not an authorization allowlist or fallbacks.
 export const WORKERS_AI_MODELS = [
-  { id: WORKERS_AI_MODEL, label: 'Kimi K2.6 · Default' },
-  { id: '@cf/deepseek-ai/deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash' },
+  { id: WORKERS_AI_MODEL, label: 'DeepSeek V4 Flash · Default' },
+  { id: '@cf/moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
   { id: '@cf/deepseek-ai/deepseek-v4-pro-0813', label: 'DeepSeek V4 Pro' },
   { id: '@cf/zai-org/glm-5.2', label: 'GLM 5.2' },
   { id: '@cf/zai-org/glm-5.3', label: 'GLM 5.3' },

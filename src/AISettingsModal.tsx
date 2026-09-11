@@ -906,6 +906,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           return;
         } catch (error) {
           lastError = error;
+          if (controller.signal.aborted) throw controller.signal.reason;
 
           if (
             error instanceof TypeError ||
