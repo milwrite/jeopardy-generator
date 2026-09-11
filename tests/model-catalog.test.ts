@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveGatewayModel } from '../worker/model-catalog';
-
-test('full Workers AI ids resolve to active gateway aliases without rewriting other providers',async()=>{
+import { gameCatalog, resolveGatewayModel } from '../worker/model-catalog';
+test('menu and relay share the active shortlist; supported full ids normalize',async()=>{
   const gateway={fetch:async()=>Response.json({data:[
-    {id:'kimi-k2.6',provider:'workers-ai'},
-    {id:'gemma-4-26b-a4b-it',provider:'workers-ai'},
-    {id:'retired-model',provider:'workers-ai',status:'sunset'},
-    {id:'deepseek/deepseek-v4-flash',provider:'openrouter'},
+    {id:'qwen3.8-27b',provider:'workers-ai',capabilities:['text-generation']},
+    {id:'minimax-m3',provider:'openrouter',capabilities:['text-generation']},
+    {id:'gemma-4-31b-it',provider:'openrouter',status:'sunset',capabilities:['text-generation']},
+    {id:'deepseek-v4-flash-0731',provider:'workers-ai',capabilities:['text-generation']},
+    {id:'mistral-small-2603',provider:'workers-ai',capabilities:['text-generation']},
   ]})};
   const signal=new AbortController().signal;
-  assert.equal(await resolveGatewayModel(gateway,'@cf/moonshotai/kimi-k2.6',signal),'kimi-k2.6');
-  assert.equal(await resolveGatewayModel(gateway,'gemma-4-26b-a4b-it',signal),'gemma-4-26b-a4b-it');
-  assert.equal(await resolveGatewayModel(gateway,'deepseek/deepseek-v4-flash',signal),'deepseek/deepseek-v4-flash');
-  assert.equal(await resolveGatewayModel(gateway,'@cf/other/retired-model',signal),null);
-  assert.equal(await resolveGatewayModel(gateway,'@cf/other/unlisted',signal),null);
+  assert.deepEqual((await gameCatalog(gateway,signal)).map(m=>m.id),['qwen3.8-27b','minimax-m3']);
+  assert.equal(await resolveGatewayModel(gateway,'@cf/qwen/qwen3.8-27b',signal),'qwen3.8-27b');
+  assert.equal(await resolveGatewayModel(gateway,'minimax/minimax-m3',signal),'minimax-m3');
+  assert.equal(await resolveGatewayModel(gateway,'deepseek-v4-flash-0731',signal),null);
+  assert.equal(await resolveGatewayModel(gateway,'gemma-4-31b-it',signal),null);
+  assert.equal(await resolveGatewayModel(gateway,'mistral-small-2603',signal),null);
 });

@@ -1,4 +1,4 @@
-import { resolveGatewayModel } from './model-catalog';
+import { gameCatalog, resolveGatewayModel } from './model-catalog';
 // CUNY session handoff and app-scoped storage. Identity tokens stay in private RPC.
 export type Identity = {ok:true;appJwt:string;gatewayJwt:string;workspaceJwt:string|null};
 export interface SuiteEnv {
@@ -61,6 +61,7 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
   const identity=result?.ok?result:null;
   if(result&&!result.ok&&result.status!==401)return json({error:{message:'CUNY access is temporarily unavailable.'}},result.status);
   if(path==='/api/session')return json({authenticated:Boolean(identity)});
+  if(path==='/api/ai/models' && request.method==='GET')return json({models:await gameCatalog(env.GATEWAY,request.signal)});
   if(path==='/api/auth/me')return identity?json({userId:1,username:'CUNY'}):json({error:'CUNY Login required'},401);
   if(path.startsWith('/my-work')||url.searchParams.has('work')){
    if(!identity)return redirect('/auth/start?next='+encodeURIComponent(path+url.search));

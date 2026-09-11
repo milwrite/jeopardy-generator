@@ -1,32 +1,15 @@
-export const WORKERS_AI_MODEL = '@cf/deepseek-ai/deepseek-v4-flash-0731';
-// Exact active catalog IDs checked against CAIL Gateway on 2026-09-08.
-// These are picker suggestions, not an authorization allowlist or fallbacks.
-export const WORKERS_AI_MODELS = [
-  { id: WORKERS_AI_MODEL, label: 'DeepSeek V4 Flash · Default' },
-  { id: '@cf/moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
-  { id: '@cf/deepseek-ai/deepseek-v4-pro-0813', label: 'DeepSeek V4 Pro' },
-  { id: '@cf/zai-org/glm-5.2', label: 'GLM 5.2' },
-  { id: '@cf/zai-org/glm-5.3', label: 'GLM 5.3' },
-  { id: '@cf/qwen/qwen3.8-27b', label: 'Qwen 3.8 27B' },
-  { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', label: 'Llama 3.3 70B' },
-  { id: '@cf/openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
-  { id: '@cf/openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
-  { id: '@cf/nvidia/nemotron-3-120b-a12b', label: 'Nemotron 3 120B' },
-  { id: '@cf/google/gemma-4-26b-a4b-it', label: 'Gemma 4 26B' },
-  { id: '@cf/mistralai/mistral-small-3.1-24b-instruct', label: 'Mistral Small 3.1' },
-];
+import { DEFAULT_GAME_MODEL, GAME_MODELS, gameModel } from './gameModels';
+export const WORKERS_AI_MODEL = DEFAULT_GAME_MODEL;
+export const WORKERS_AI_MODELS = GAME_MODELS;
 export const isHostedSuite = () => typeof window !== 'undefined' && window.location.hostname.endsWith('.ailab-452.workers.dev');
 
 export function configuredModelId(saved: string | null, hosted: boolean, useProxy: boolean): string {
-  return saved?.trim() ? normalizeOpenRouterModelId(saved.trim())
-    : hosted && useProxy ? WORKERS_AI_MODEL : 'google/gemini-3.1-flash-lite';
+  const choice = gameModel(saved?.trim() || '');
+  if (hosted && useProxy) return choice?.id || DEFAULT_GAME_MODEL;
+  return choice?.provider === 'openrouter' ? choice.upstream : 'deepseek/deepseek-v4.1-flash';
 }
 
-export const OPENROUTER_MODELS = [
-  { id: 'deepseek/deepseek-v4-flash', label: 'deepseek-v4-flash' },
-  { id: 'google/gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite' },
-  { id: 'z-ai/glm-5.2', label: 'glm-5.2' },
-] as const;
+export const OPENROUTER_MODELS = GAME_MODELS.filter(m => m.provider === 'openrouter').map(m => ({id:m.upstream, label:m.label}));
 
 const LEGACY_MODEL_IDS: Record<string, string> = {
   'z-ai/glm-5.2-flash': 'z-ai/glm-5.2',
@@ -42,14 +25,16 @@ export function normalizeOpenRouterModelId(modelId: string): string {
 }
 
 export function getOpenRouterModelOptions(modelId: string) {
-  if(modelId.startsWith('@cf/'))return {chat_template_kwargs:{enable_thinking:false}};
+  const choice = gameModel(modelId);
+  if(choice?.provider === 'workers-ai' || modelId.startsWith('@cf/'))return {chat_template_kwargs:{enable_thinking:false}};
+  if(choice?.provider === 'openrouter')return {reasoning:{enabled:false}};
   return MODELS_WITH_OPTIONAL_REASONING.has(normalizeOpenRouterModelId(modelId))
     ? { reasoning: { effort: 'none' as const } }
     : {};
 }
 
 export function getOpenRouterBoardResponseFormat(modelId: string) {
-  return (modelId.startsWith('@cf/') || normalizeOpenRouterModelId(modelId) === 'google/gemini-3.1-flash-lite')
+  return (Boolean(gameModel(modelId)) || modelId.startsWith('@cf/') || normalizeOpenRouterModelId(modelId) === 'google/gemini-3.1-flash-lite')
     ? { type: 'json_object' as const }
     : JEOPARDY_BOARD_RESPONSE_FORMAT;
 }

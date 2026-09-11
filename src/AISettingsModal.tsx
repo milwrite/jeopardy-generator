@@ -15,6 +15,7 @@ import {
 } from './openRouterModels';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
+import { gameModel } from './gameModels';
 
 const DEFAULT_SYSTEM_MESSAGE =
   'Create a Jeopardy! game board. Return ONLY valid JSON — no markdown, no code fences, no commentary — in EXACTLY this shape:\n' +
@@ -302,19 +303,38 @@ export default function AISettingsModal({
   onClose,
   onGeneratedCategories,
 }: AISettingsModalProps) {
-  // OpenRouter ("External") is the default provider. When no personal API key is
-  // stored, calls route through a same-origin worker proxy that adds a runtime
-  // secret, so the key stays out of the static bundle and users don't have to
-  // paste one in. Power users can still save their own key in localStorage to
-  // hit OpenRouter directly.
+  // Included models use the current CUNY session at the Worker. Personal keys
+  // go directly to OpenRouter and use that provider's full model identifiers.
   const [aiProvider, setAiProvider] = useState<AIProvider>('openrouter');
   const [apiKey, setApiKey] = useState('');
   const [showKeyInput, setShowKeyInput] = useState(false);
-  const [modelId, setModelId] = useState('google/gemini-3.1-flash-lite');
+  const [modelId, setModelId] = useState(WORKERS_AI_MODEL);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [modelNotice, setModelNotice] = useState('');
   const useProxy = aiProvider === 'openrouter' && !apiKey.trim();
-  useEffect(()=>{if(!useProxy&&apiKey&&modelId.startsWith('@cf/'))setModelId('google/gemini-3.1-flash-lite');},[useProxy,apiKey,modelId]);
+  useEffect(()=>{if(!useProxy&&apiKey)setModelId(id=>configuredModelId(id,isHostedSuite(),false));},[useProxy,apiKey]);
+  useEffect(() => {
+    if (!isHostedSuite() || !useProxy) return;
+    const controller = new AbortController();
+    setAvailableModels([]);
+    fetch('/api/ai/models', { signal:controller.signal }).then(async response => {
+      if (!response.ok) throw new Error('The model list could not be loaded. Reopen Config to retry.');
+      const data = await response.json();
+      const ids = (data.models || []).map((model:{id:string}) => model.id).filter((id:string) => gameModel(id));
+      if (!ids.length) throw new Error('No shortlisted model is available right now. Reopen Config to retry.');
+      setAvailableModels(ids);
+      setModelId(previous => {
+        const selected = configuredModelId(previous,true,true);
+        const next = ids.includes(selected) ? selected : ids[0];
+        try { localStorage.setItem('jeopardy_model_id',next); } catch {}
+        return next;
+      });
+    }).catch(error => { if (!controller.signal.aborted) setModelNotice(error.message); });
+    return () => controller.abort();
+  }, [useProxy]);
   const selectModel = (id: string) => {
     setModelId(id);
+    setModelNotice('');
     setTestResult(null);
     try { localStorage.setItem('jeopardy_model_id', id); } catch { /* Current session remains usable. */ }
   };
@@ -342,7 +362,7 @@ export default function AISettingsModal({
     return {
       schemaVersion: 1,
       source: 'generated',
-      provider: requestedModel.startsWith('@cf/') ? 'workers-ai' : aiProvider,
+      provider: gameModel(requestedModel)?.provider === 'workers-ai' ? 'workers-ai' : aiProvider,
       model,
       requestedModel,
       ...(resolvedModel ? { resolvedModel: resolvedModel.trim() } : {}),
@@ -376,11 +396,13 @@ export default function AISettingsModal({
         setAiProvider(savedProvider);
       }
 
-      const savedModelId = configuredModelId(localStorage.getItem('jeopardy_model_id'), isHostedSuite(), !savedKey);
+      const storedModelId = localStorage.getItem('jeopardy_model_id');
+      const savedModelId = configuredModelId(storedModelId, isHostedSuite(), !savedKey);
+      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. DeepSeek V4.1 Flash is selected for new generations.');
       if (savedModelId) {
         const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
         setModelId(normalizedModelId);
-        if (normalizedModelId !== savedModelId) {
+        if (normalizedModelId !== storedModelId) {
           localStorage.setItem('jeopardy_model_id', normalizedModelId);
         }
       }
@@ -1078,12 +1100,12 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             <div className="ai-field-group">
               <label className="ai-field-label" htmlFor="generation-model">Model</label>
               {isHostedSuite() && useProxy ? <>
-                <select id="generation-model" className="ai-input" value={modelId} onChange={event => selectModel(event.target.value)}>
-                  {!WORKERS_AI_MODELS.some(model => model.id === modelId) && <option value={modelId}>{modelId}</option>}
-                  {WORKERS_AI_MODELS.map(({id, label}) => <option key={id} value={id}>{label}</option>)}
+                <select id="generation-model" className="ai-input" value={modelId} disabled={!availableModels.length} onChange={event => selectModel(event.target.value)}>
+                  {WORKERS_AI_MODELS.filter(model=>availableModels.includes(model.id)).map(({id, label}) => <option key={id} value={id}>{label}</option>)}
                 </select>
-                <p className="model-id-detail">{modelId}</p>
-                <p className="model-choice-note">Applies to board generation and Final Jeopardy. Your selection is remembered.</p>
+                <p className="model-choice-note"><a href="https://ailab.gc.cuny.edu/models/" target="_blank" rel="noreferrer">CAIL Featured</a>, plus MiniMax M3 and compact Gemma 4. Applies to the board and Final Jeopardy.</p>
+                {modelId === 'minimax-m3' && <p className="model-choice-note">MiniMax usually takes longer to build a full board.</p>}
+                {modelNotice && <p className="model-choice-note" role="status">{modelNotice}</p>}
               </> : <div className="model-chip-grid" role="group" aria-label="Model">
                 {OPENROUTER_MODELS.map(({ id, label }) => (
                   <button
@@ -1292,7 +1314,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         )}
 
         <div className="ai-action-footer">
-          <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || generateCooldown > 0} type="button">
+          <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || generateCooldown > 0 || (isHostedSuite() && useProxy && !availableModels.length)} type="button">
             {isGenerating ? 'Generating…' : generateCooldown > 0 ? `Wait ${generateCooldown}s` : 'Generate Board'}
           </button>
         </div>
