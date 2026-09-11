@@ -10,10 +10,14 @@ export const validateQuestionRule = (
   const normalizedQuestion = normalizeText(questionText);
   const normalizedAnswer = normalizeText(answerText);
 
+  // Shared grammar is not an answer leak. Judge the named subject rather than
+  // the "What is the..." response scaffold or ordinary connecting words.
+  const commonWords = new Set(['a','an','the','is','are','was','were','be','been','being','what','who','where','when','which','this','that','these','those','it','its','has','have','had','of','in','on','at','to','for','from','by','with','and','or','as']);
+
   const categoryWords = normalizedCategory.split(/\s+/).filter((word) => word.length > 2);
   const questionWords = normalizedQuestion.split(/\s+/).filter((word) => word.length > 2);
   const answerWords = normalizedAnswer.split(/\s+/);
-  const allClueWords = [...categoryWords, ...questionWords];
+  const allClueWords = [...categoryWords, ...questionWords].filter(word => !commonWords.has(word));
 
   const overlappingWords = allClueWords.filter((word) =>
     answerWords.some((answerWord) => answerWord === word)
@@ -49,7 +53,12 @@ export const validateQuestionRule = (
     normalizedQuestion.includes(normalizeText(phrase))
   );
 
-  if (hasVaguePhrases) {
+  // "This city, on the Thames, is the capital of the United Kingdom" is a
+  // specific clue. Generic phrasing is only an error when it lacks details.
+  let distinguishingText = normalizedQuestion;
+  for (const phrase of vaguePhrases) distinguishingText = distinguishingText.replaceAll(normalizeText(phrase), ' ');
+  const details = distinguishingText.split(/\s+/).filter(word => word.length > 2 && !commonWords.has(word));
+  if (hasVaguePhrases && details.length < 2) {
     return {
       valid: false,
       reason:

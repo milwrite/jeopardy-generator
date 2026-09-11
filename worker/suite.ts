@@ -1,3 +1,5 @@
+import { gameCatalog, resolveGatewayModel } from './model-catalog';
+import { generationBudget } from '../src/gameModels';
 // CUNY session handoff and app-scoped storage. Identity tokens stay in private RPC.
 export type Identity = {ok:true;appJwt:string;gatewayJwt:string;workspaceJwt:string|null};
 export interface SuiteEnv {
@@ -60,6 +62,7 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
   const identity=result?.ok?result:null;
   if(result&&!result.ok&&result.status!==401)return json({error:{message:'CUNY access is temporarily unavailable.'}},result.status);
   if(path==='/api/session')return json({authenticated:Boolean(identity)});
+  if(path==='/api/ai/models' && request.method==='GET')return json({models:await gameCatalog(env.GATEWAY,request.signal)});
   if(path==='/api/auth/me')return identity?json({userId:1,username:'CUNY'}):json({error:'CUNY Login required'},401);
   if(path.startsWith('/my-work')||url.searchParams.has('work')){
    if(!identity)return redirect('/auth/start?next='+encodeURIComponent(path+url.search));
@@ -72,12 +75,16 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
    if(!(await env.REQUEST_LIMIT.limit({key:'ai:'+request.headers.get('cf-connecting-ip')})).success)return json({error:'Try again shortly'},429);
    const body=await boundedBody(request);
    if(!Array.isArray(body.messages)||body.messages.length>300)return json({error:'Invalid model request'},400);
+   const model=typeof body.model==='string'?await resolveGatewayModel(env.GATEWAY,body.model,request.signal):null;
+   if(!model)return json({error:{message:'This model is no longer available. Choose another model in Config.'}},404);
+   body.model=model;
+   body.max_tokens=generationBudget(model,Math.min(8000,Math.max(1,Number(body.max_tokens)||8000)));
    // Personal keys are sent by the browser directly to their provider.
    // This included-access endpoint always requires verified CUNY identity.
    const target=TOOLS+'/v1/chat/completions';
    const headers=new Headers({'content-type':'application/json'});
    headers.set('authorization','Bearer '+identity.gatewayJwt);
-   const upstream=new Request(target,{method:'POST',headers,body:JSON.stringify(body),signal:request.signal});
+   const upstream=new Request(target,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.any([request.signal,AbortSignal.timeout(90000)])});
    const response=await env.GATEWAY.fetch(upstream);
    return new Response(response.body,{status:response.status,headers:{...secure,'content-type':response.headers.get('content-type')||'application/json'}});
   }
