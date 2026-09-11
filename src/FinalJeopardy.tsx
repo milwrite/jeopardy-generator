@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {configuredModelId,isHostedSuite,getOpenRouterModelOptions} from './openRouterModels';
+import { parseFinalClue } from './generatedBoard';
 import type { Player } from './jeopardyTypes';
 
 export interface FJClue {
@@ -9,9 +10,8 @@ export interface FJClue {
 }
 
 // Generate one Final Jeopardy clue using whichever model the game is configured
-// for (local vLLM via the shim, or OpenRouter). Best-effort JSON extraction.
-async function generateFinalClue(): Promise<FJClue> {
-  const controller = new AbortController();
+// for (local vLLM via the shim, or OpenRouter).
+async function generateFinalClue(controller: AbortController): Promise<FJClue> {
   const deadline = setTimeout(() => controller.abort(new Error('The model did not respond within 45 seconds. Try another model in Config.')), 45_000);
   try {
   const g = (k: string, d = '') =>
@@ -63,21 +63,14 @@ async function generateFinalClue(): Promise<FJClue> {
       }),
     });
     const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || d.error || 'Model request failed');
     content = d.message?.content || d.response || '';
   }
 
-  const match = content.match(/\{[\s\S]*\}/);
-  let obj: Partial<FJClue> = {};
-  try {
-    obj = match ? JSON.parse(match[0]) : {};
-  } catch {
-    obj = {};
-  }
-  return {
-    category: obj.category || 'Final Jeopardy',
-    clue: obj.clue || content.trim() || 'No clue generated.',
-    answer: obj.answer || '',
-  };
+  return parseFinalClue(content);
+  } catch (error) {
+    if (controller.signal.aborted) throw controller.signal.reason;
+    throw error;
   } finally {
     clearTimeout(deadline);
   }
@@ -97,6 +90,9 @@ export default function FinalJeopardy({ players, onComplete, onCancel, saved, on
   const [wagers, setWagers] = useState<number[]>(saved?.wagers||players.map(() => 0));
   const [clue, setClue] = useState<FJClue | null>(saved?.clue||null);
   const [loading, setLoading] = useState(false);
+  const [generationError, setGenerationError] = useState('');
+  const activeGeneration = useRef<AbortController | null>(null);
+  useEffect(() => () => activeGeneration.current?.abort(new Error('Generation cancelled.')), []);
   const [clueRevealed, setClueRevealed] = useState(saved?.clueRevealed||false);
   const [answerRevealed, setAnswerRevealed] = useState(saved?.answerRevealed||false);
   const [correct, setCorrect] = useState<boolean[]>(saved?.correct||players.map(() => false));
@@ -112,14 +108,21 @@ export default function FinalJeopardy({ players, onComplete, onCancel, saved, on
   };
 
   const beginClue = async () => {
+    if (activeGeneration.current) return;
+    const controller = new AbortController();
+    activeGeneration.current = controller;
+    setGenerationError('');
     setPhase('clue');
     setLoading(true);
     try {
-      setClue(await generateFinalClue());
-    } catch {
-      setClue({ category: 'Final Jeopardy', clue: 'Generation failed. Sign in with CUNY or check your API key in Config, then try again.', answer: '' });
+      setClue(await generateFinalClue(controller));
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'Generation failed. Try again.');
+      setPhase('wager');
+    } finally {
+      activeGeneration.current = null;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const toResults = () => {
@@ -138,6 +141,7 @@ export default function FinalJeopardy({ players, onComplete, onCancel, saved, on
   return (
     <div className="final-jeopardy">
       <h2>Final Jeopardy</h2>
+      {generationError && <p role="alert">{generationError} Your wagers are retained.</p>}
 
       {phase === 'wager' && (
         <div className="fj-section">
@@ -166,7 +170,8 @@ export default function FinalJeopardy({ players, onComplete, onCancel, saved, on
       {phase === 'clue' && (
         <div className="fj-section">
           {loading ? (
-            <p className="fj-loading">Generating the Final Jeopardy clue…</p>
+            <><p className="fj-loading" role="status">Generating the Final Jeopardy clue…</p>
+            <button className="btn-danger" onClick={() => activeGeneration.current?.abort(new Error('Generation cancelled.'))}>Cancel generation</button></>
           ) : clue ? (
             <>
               <div className="fj-category">{clue.category}</div>

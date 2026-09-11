@@ -9,6 +9,7 @@ export interface GenerationProgress {
   completedQuestions: number;
   totalQuestions: number;
   percent: number;
+  receiving: boolean;
 }
 
 export interface GeneratedBoardStream {
@@ -126,93 +127,100 @@ export async function readGeneratedBoardStream(
   response: Response,
   provider: StreamProvider,
   onProgress: (progress: GenerationProgress) => void,
+  options: { signal?: AbortSignal; idleTimeoutMs?: number } = {},
 ): Promise<GeneratedBoardStream> {
   const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('The generation response did not include a readable body.');
-  }
-
+  if (!reader) throw new Error('The generation response did not include a readable body.');
   const decoder = new TextDecoder();
   let content = '';
   let buffer = '';
   let rawResponse = '';
   let resolvedModel: string | undefined;
-  let lastCompletedQuestions = -1;
-
+  let complete = false;
+  let received = false;
+  let lastProgress = '';
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  let failure: unknown;
+  const cancel = (reason: unknown) => {
+    failure = reason;
+    void reader.cancel(reason).catch(() => {});
+  };
+  const abort = () => cancel(options.signal?.reason || new Error('Generation cancelled.'));
+  const resetIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => cancel(new Error('The model stopped responding. Try again or choose another model.')), options.idleTimeoutMs ?? 45_000);
+  };
   const reportProgress = () => {
     const completedQuestions = countCompletedQuestions(content);
-    if (completedQuestions === lastCompletedQuestions) return;
-
-    lastCompletedQuestions = completedQuestions;
-    onProgress({
-      completedQuestions,
-      totalQuestions: REQUIRED_QUESTION_COUNT,
-      percent: Math.round(
-        (completedQuestions / REQUIRED_QUESTION_COUNT) * STREAM_PROGRESS_LIMIT,
-      ),
-    });
+    const key = `${completedQuestions}:${received}`;
+    if (key === lastProgress) return;
+    lastProgress = key;
+    onProgress({ completedQuestions, totalQuestions: REQUIRED_QUESTION_COUNT,
+      percent: Math.round(completedQuestions / REQUIRED_QUESTION_COUNT * STREAM_PROGRESS_LIMIT),
+      receiving: received });
   };
-
+  const processChunk = (chunk: any) => {
+    if (chunk?.error) throw new Error(chunk.error.message || String(chunk.error));
+    if (typeof chunk?.model === 'string' && chunk.model.trim()) resolvedModel = chunk.model.trim();
+    const nextContent = contentFromChunk(chunk, provider);
+    content += nextContent;
+    received ||= Boolean(nextContent || chunk?.choices?.[0]?.delta?.reasoning || chunk?.choices?.[0]?.delta?.reasoning_content || chunk?.message?.thinking);
+    reportProgress();
+    const finish = chunk?.choices?.[0]?.finish_reason;
+    if (finish === 'length' || (provider === 'ollama' && chunk?.done_reason === 'length')) {
+      throw new Error('The model reached its output limit before finishing. Try another model.');
+    }
+    if (finish && finish !== 'stop') throw new Error(`The model could not finish the board (${finish}). Try another model.`);
+    if (finish === 'stop' || chunk?.done === true) complete = true;
+  };
   const processLine = (line: string) => {
-    const trimmedLine = line.trim();
-    if (!trimmedLine || trimmedLine.startsWith(':')) return;
-
-    const payload = trimmedLine.startsWith('data:')
-      ? trimmedLine.slice(5).trim()
-      : trimmedLine;
-    if (!payload || payload === '[DONE]') return;
-
-    try {
-      const chunk = JSON.parse(payload);
-      if (chunk?.error) {
-        throw new Error(chunk.error.message || chunk.error || 'Generation stream failed.');
-      }
-
-      if (typeof chunk?.model === 'string' && chunk.model.trim()) {
-        resolvedModel = chunk.model.trim();
-      }
-
-      const nextContent = contentFromChunk(chunk, provider);
-      if (nextContent) {
-        content += nextContent;
-        reportProgress();
-      }
-    } catch (error) {
-      if (error instanceof SyntaxError) return;
-      throw error;
-    }
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith(':')) return;
+    const payload = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+    if (payload === '[DONE]') { complete = true; return; }
+    let chunk;
+    try { chunk = JSON.parse(payload); } catch { return; }
+    processChunk(chunk);
   };
-
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const decoded = decoder.decode(value, { stream: true });
-    rawResponse += decoded;
-    buffer += decoded;
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() || '';
-    lines.forEach(processLine);
-  }
-
-  const finalDecoded = decoder.decode();
-  rawResponse += finalDecoded;
-  buffer += finalDecoded;
-  if (buffer.trim()) processLine(buffer);
-
-  if (!content && rawResponse.trim()) {
-    try {
-      const completeResponse = JSON.parse(rawResponse);
-      content = contentFromChunk(completeResponse, provider);
-      reportProgress();
-    } catch (error) {
-      if (!(error instanceof SyntaxError)) throw error;
+  try {
+    options.signal?.addEventListener('abort', abort, { once: true });
+    if (options.signal?.aborted) abort();
+    resetIdle();
+    while (!complete && !failure) {
+      const { done, value } = await reader.read();
+      if (failure) throw failure;
+      if (done) break;
+      resetIdle();
+      const decoded = decoder.decode(value, { stream: true });
+      rawResponse += decoded;
+      buffer += decoded;
+      if (rawResponse.length > 2_000_000) throw new Error('The model response was too large. Try again.');
+      let newline;
+      while (!complete && (newline = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, newline);
+        buffer = buffer.slice(newline + 1);
+        processLine(line);
+      }
     }
+    if (failure) throw failure;
+    if (!complete) {
+      const tail = decoder.decode();
+      rawResponse += tail;
+      buffer += tail;
+      if (buffer.trim()) processLine(buffer);
+    }
+    if (!content && rawResponse.trim()) {
+      let chunk;
+      try { chunk = JSON.parse(rawResponse); } catch { /* SSE was processed above. */ }
+      if (chunk) processChunk(chunk);
+    }
+    if (!content.trim()) throw new Error('The generation response did not contain board content.');
+    return { content, ...(resolvedModel ? { model: resolvedModel } : {}) };
+  } finally {
+    clearTimeout(idleTimer);
+    options.signal?.removeEventListener('abort', abort);
+    // Provider completion ends the operation even when its HTTP stream stays open.
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
-
-  if (!content) {
-    throw new Error('The generation response did not contain board content.');
-  }
-
-  return { content, ...(resolvedModel ? { model: resolvedModel } : {}) };
 }

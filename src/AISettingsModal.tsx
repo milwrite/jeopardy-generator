@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 import {
-  createDefaultQuestion,
   createDifficultyAdjustments,
-  defaultCategories,
   defaultValues,
 } from './jeopardyDefaults';
 import { readGeneratedBoardStream } from './generationProgress';
@@ -15,6 +13,7 @@ import {
 } from './openRouterModels';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
+import { parseGeneratedBoard, waitForRetry } from './generatedBoard';
 import { gameModel } from './gameModels';
 
 const DEFAULT_SYSTEM_MESSAGE =
@@ -31,38 +30,6 @@ interface AISettingsModalProps {
   signedIn: boolean;
   onClose: () => void;
   onGeneratedCategories: (result: BoardGenerationResult) => void;
-}
-
-// A quick, fun standalone clue from OpenRouter (gemini) to entertain the player
-// while the local model grinds out the full board. Best-effort; silently no-ops.
-async function fetchFillerClue(useProxy: boolean, apiKey: string): Promise<string> {
-  const body = JSON.stringify({
-    model: useProxy && isHostedSuite() ? WORKERS_AI_MODEL : 'google/gemini-3.1-flash-lite',
-    ...(useProxy && isHostedSuite()?{chat_template_kwargs:{enable_thinking:false}}:{}),
-    messages: [{
-      role: 'user',
-      content: 'Write ONE clever Jeopardy! clue as a single declarative statement on a random interesting topic. Then on a new line put "A: " followed by the response phrased as a question. No preamble, under 40 words total.',
-    }],
-    max_tokens: 120,
-    temperature: 0.9,
-  });
-
-  const r = await fetch(
-    useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(useProxy
-          ? {}
-          : { Authorization: `Bearer ${apiKey}`, 'HTTP-Referer': window.location.href, 'X-Title': 'Jeopardy Game' }),
-      },
-      body,
-    },
-  );
-  if (!r.ok) throw new Error('filler unavailable');
-  const d = await r.json();
-  return (d.choices?.[0]?.message?.content || '').trim();
 }
 
 const buildMockCategories = (): Category[] => {
@@ -147,122 +114,8 @@ const buildMockCategories = (): Category[] => {
   }));
 };
 
-const buildFallbackCategories = (): Category[] =>
-  defaultCategories.map((title) => ({
-    title: `${title} (AI Error)`,
-    questions: defaultValues.map((value, index) => ({
-      text: `JSON parse error occurred. This is a fallback question ${index + 1} for ${value} points.`,
-      answer: 'What is a JSON parsing error?',
-      value,
-      revealed: false,
-      answered: false,
-      dailyDouble: false,
-      ruleViolation: null,
-      ratings: [],
-    })),
-    difficultyAdjustments: createDifficultyAdjustments(),
-  }));
-
-const extractJsonCandidate = (jsonContent: string) => {
-  const codeBlockMatch = jsonContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (codeBlockMatch) {
-    return codeBlockMatch[1];
-  }
-
-  const jsonRegex = /(\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}))*\})/g;
-  const balancedMatches = jsonContent.match(jsonRegex);
-  if (balancedMatches && balancedMatches.length > 0) {
-    return balancedMatches.sort((a, b) => b.length - a.length)[0];
-  }
-
-  const braceMatches = jsonContent.match(/\{[\s\S]*?\}/g);
-  if (braceMatches && braceMatches.length > 0) {
-    return braceMatches.sort((a, b) => b.length - a.length)[0];
-  }
-
-  return jsonContent.match(/\{[\s\S]*\}/)?.[0] || null;
-};
-
-const sanitizeJsonCandidate = (candidate: string) => {
-  let sanitizedJson = candidate.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
-
-  sanitizedJson = sanitizedJson.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
-    match
-      .replace(/\\(?!["\\/bfnrt])/g, '\\\\')
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r')
-      .replace(/\t/g, '\\t')
-      .replace(/\f/g, '\\f')
-  );
-
-  sanitizedJson = sanitizedJson
-    .replace(/,\s*}/g, '}')
-    .replace(/,\s*\]/g, ']')
-    .replace(/"\s+"/g, '" "')
-    .replace(/"\{/g, '{')
-    .replace(/\}"/g, '}')
-    .replace(/"\[/g, '[')
-    .replace(/\]"/g, ']');
-
-  const jsonLines = sanitizedJson.split('\n');
-  if (jsonLines.length >= 13) {
-    jsonLines[12] = jsonLines[12].replace(/(".*?)([\u0000-\u001F])(.+?")/g, '$1\\$2$3');
-    sanitizedJson = jsonLines.join('\n');
-  }
-
-  return sanitizedJson.replace(/"(?:[^"\\]|\\["\\bfnrt])*"/g, (match) =>
-    match.replace(/\\([^"\\bfnrt/])/g, '\\\\$1')
-  );
-};
-
-const parseJsonCandidate = (candidate: string) => {
-  const sanitizedJson = sanitizeJsonCandidate(candidate);
-
-  try {
-    return JSON.parse(sanitizedJson);
-  } catch {
-    try {
-      const aggressiveJson = sanitizedJson
-        .replace(/\\(?!["\\/bfnrt])/g, '\\\\')
-        .replace(/[\n\r\t\f]/g, ' ')
-        .replace(/"\s+"/g, '" "')
-        .replace(/([^\\])"/g, '$1\\"')
-        .replace(/\\\\"/g, '\\"')
-        .replace(/\\"/g, '\\"');
-
-      return JSON.parse(aggressiveJson);
-    } catch {
-      try {
-        const categoryMatch = sanitizedJson.match(/"categories"\s*:\s*(\[[\s\S]*?\])/);
-        if (!categoryMatch) {
-          throw new Error('Missing categories array');
-        }
-        return JSON.parse(`{"categories":${categoryMatch[1]}}`);
-      } catch {
-        const fixedJson = sanitizedJson
-          .replace(/("[^"]*)(")([^"]*")/g, '$1\\"$3')
-          .replace(/([\[\{,]\s*)([^,\{\[\]\"\d-])/g, '$1"$2')
-          .replace(/([^\s\]\}"])(\s*[\]\},])/g, '$1"$2');
-
-        return JSON.parse(fixedJson);
-      }
-    }
-  }
-};
-
 const ensureBoardShape = (categories: Category[]) => {
-  let normalized = categories;
-
-  if (normalized.length < 6) {
-    const placeholders = defaultCategories.slice(0, 6 - normalized.length).map((title) => ({
-      title: `${title} (Generated)`,
-      questions: defaultValues.map(createDefaultQuestion),
-      difficultyAdjustments: createDifficultyAdjustments(),
-    }));
-    normalized = [...normalized, ...placeholders];
-  } else if (normalized.length > 6) {
-    normalized = normalized.slice(0, 6);
-  }
+  const normalized = categories;
 
   const positions: Array<{ categoryIndex: number; questionIndex: number }> = [];
   let dailyDoubleCount = 0;
@@ -352,7 +205,16 @@ export default function AISettingsModal({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [testCooldown, setTestCooldown] = useState(0);
-  const [generateCooldown, setGenerateCooldown] = useState(0);
+  const activeGeneration = useRef<AbortController | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => () => activeGeneration.current?.abort(new Error('Generation cancelled.')), []);
+  useEffect(() => {
+    if (!isGenerating) return;
+    const started = Date.now();
+    setElapsedSeconds(0);
+    const timer = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [isGenerating]);
 
   const buildGenerationMetadata = (resolvedModel?: string): BoardMetadata => {
     const topics = categoryTopics.map((topic) => topic.trim()).filter(Boolean);
@@ -587,6 +449,7 @@ export default function AISettingsModal({
   };
 
   const generateQuestions = async () => {
+    if (activeGeneration.current) return;
     setTestResult(null);
     if (isHostedSuite() && useProxy && !signedIn) {
       setTestResult({success:false, message:'Sign in with CUNY or enter your own API key.'});
@@ -622,8 +485,11 @@ export default function AISettingsModal({
 
     setIsGenerating(true);
     setGenerationProgress(0);
-    setGenerationStatus('Waiting for generated clues…');
-
+    setGenerationStatus('Connecting to the model…');
+    const controller = new AbortController();
+    activeGeneration.current = controller;
+    // One deadline covers fetching, streaming, and any transient retry.
+    const deadline = setTimeout(() => controller.abort(new Error('The model did not finish within 90 seconds. Try another model in Config.')), 90_000);
     try {
       const useMockResponse = process.env.NEXT_PUBLIC_USE_MOCK_AI === 'true';
 
@@ -772,13 +638,11 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         },
       } as const;
 
-      const maxRetries = 4;
+      const maxRetries = 1;
       let retries = 0;
       let lastError: unknown = null;
 
       while (retries <= maxRetries) {
-        const controller = new AbortController();
-        const deadline = setTimeout(() => controller.abort(new Error('The model did not finish within 90 seconds. Try another model in Config.')), 90_000);
         try {
           if (retries > 0) {
             setGenerationProgress(0);
@@ -808,7 +672,10 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             }
 
             if (response.status === 429) {
-              await new Promise((resolve) => setTimeout(resolve, 2000 * (retries + 1)));
+              lastError = new Error('The model is busy. Wait a moment and try again.');
+              if (retries >= maxRetries) throw lastError;
+              setGenerationStatus('The model is busy. Retrying once…');
+              await waitForRetry(2000, controller.signal);
               retries++;
               continue;
             }
@@ -821,7 +688,10 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
             }
 
             if (response.status >= 500) {
-              await new Promise((resolve) => setTimeout(resolve, 1500));
+              lastError = new Error(`The model service is unavailable (${response.status}). Try again or choose another model.`);
+              if (retries >= maxRetries) throw lastError;
+              setGenerationStatus('The model service is reconnecting. Retrying once…');
+              await waitForRetry(1500, controller.signal);
               retries++;
               continue;
             }
@@ -832,27 +702,25 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           const generatedStream = await readGeneratedBoardStream(
             response,
             aiProvider,
-            ({ completedQuestions, totalQuestions, percent }) => {
+            ({ completedQuestions, totalQuestions, percent, receiving }) => {
               setGenerationProgress(percent);
               setGenerationStatus(
                 completedQuestions > 0
                   ? `Generated ${completedQuestions} of ${totalQuestions} clues…`
-                  : 'Waiting for generated clues…',
+                  : receiving ? 'The model is writing the first clues…' : 'Connected. Waiting for the model…',
               );
             },
+            { signal: controller.signal },
           );
           const jsonContent = generatedStream.content;
 
-          const candidate = extractJsonCandidate(jsonContent);
-          const parsedData = candidate ? parseJsonCandidate(candidate) : { categories: buildFallbackCategories() };
+          const parsedData = parseGeneratedBoard(jsonContent);
           setGenerationProgress(94);
           setGenerationStatus('Checking board structure…');
           const savedAdjustmentsStr = localStorage.getItem('jeopardy_difficulty_adjustments');
           const savedAdjustments = savedAdjustmentsStr ? JSON.parse(savedAdjustmentsStr) : {};
 
-          const parsedCategories = Array.isArray(parsedData?.categories)
-            ? parsedData.categories
-            : buildFallbackCategories();
+          const parsedCategories = parsedData.categories;
 
           let formattedCategories: Category[] = parsedCategories.map((category: any) => {
             const similarCategory = Object.keys(savedAdjustments).find(
@@ -865,7 +733,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
               ? savedAdjustments[similarCategory]
               : createDifficultyAdjustments();
 
-            const questions = Array.isArray(category.questions) ? category.questions : defaultValues.map(createDefaultQuestion);
+            const questions = category.questions;
 
             return {
               title: category.title || 'Generated Category',
@@ -886,8 +754,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
                 }
 
                 return {
-                  text: String(question.text || 'Generated clue unavailable'),
-                  answer: String(question.answer || 'What is unavailable?'),
+                  text: question.text,
+                  answer: question.answer,
                   value: Number(question.value) || 200,
                   revealed: false,
                   answered: false,
@@ -906,7 +774,7 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
 
           // Guardrail: reject a board whose responses aren't proper Jeopardy
           // questions, whose clues leak the answer, or whose categories repeat —
-          // and retry, so broken boards never reach the table.
+          // so broken boards never reach the table.
           const totalQ = formattedCategories.reduce((n, c) => n + c.questions.length, 0);
           const violations = formattedCategories.reduce(
             (n, c) => n + c.questions.filter((q) => q.ruleViolation).length,
@@ -930,35 +798,28 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
           lastError = error;
           if (controller.signal.aborted) throw controller.signal.reason;
 
-          if (
-            error instanceof TypeError ||
-            (error instanceof Error &&
-              (error.message.includes('Rate limit exceeded') ||
-                error.message.includes('experiencing issues') ||
-                error.message.includes('Board quality check failed')))
-          ) {
+          if (error instanceof TypeError) {
             retries++;
             if (retries <= maxRetries) {
               setGenerationProgress(0);
               setGenerationStatus(`Retrying generation after attempt ${retries}…`);
-              await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+              await waitForRetry(1500, controller.signal);
               continue;
             }
           }
 
           throw error;
-        } finally {
-          clearTimeout(deadline);
         }
       }
 
       throw lastError instanceof Error ? lastError : new Error('Question generation failed.');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Question generation failed.';
-      setTestResult({ success: false, message: `Generation failed: ${errorMessage}` });
+      setTestResult({ success: false, message: errorMessage.startsWith('Generation cancelled') ? errorMessage : `Generation failed: ${errorMessage}` });
     } finally {
       setIsGenerating(false);
-      startCooldown(setGenerateCooldown, 45);
+      clearTimeout(deadline);
+      activeGeneration.current = null;
     }
   };
 
@@ -1021,7 +882,9 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
                 <div className="gen-progress-fill" style={{ width: `${generationProgress}%` }} />
               </div>
               <div className="gen-progress-pct">{generationProgress}%</div>
-              <div className="gen-progress-status">{generationStatus}</div>
+              <div className="gen-progress-status" role="status">{generationStatus}</div>
+              <p>{elapsedSeconds}s elapsed · up to 90s</p>
+              <button type="button" className="ai-btn-test gen-cancel" onClick={() => activeGeneration.current?.abort(new Error('Generation cancelled. Your current board is unchanged.'))}>Cancel generation</button>
             </div>
           </div>
         )}
@@ -1314,8 +1177,8 @@ Requirements: EXACTLY 6 categories; each with EXACTLY 5 questions; EXACTLY 2 dai
         )}
 
         <div className="ai-action-footer">
-          <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || generateCooldown > 0 || (isHostedSuite() && useProxy && !availableModels.length)} type="button">
-            {isGenerating ? 'Generating…' : generateCooldown > 0 ? `Wait ${generateCooldown}s` : 'Generate Board'}
+          <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || (isHostedSuite() && useProxy && !availableModels.length)} type="button">
+            {isGenerating ? 'Generating…' : 'Generate Board'}
           </button>
         </div>
       </div>
