@@ -772,8 +772,8 @@ button:disabled {
 }
 
 .player.active {
-  background-color: rgba(255, 215, 0, 0.2);
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+  background-color: transparent;
+  box-shadow: none;
 }
 
 
@@ -2593,7 +2593,7 @@ button:disabled { opacity: .55; }
 .cloud-modal-input { font-size: 1rem; border-color: #647ea7; }
 .cloud-modal-subtitle, .cloud-modal-note, .cloud-modal-error, .cloud-modal-success { font-size: 1rem; color: #c1d0e8; }
 @media (max-width: 768px) {
-  .board-grid { min-width: 660px; }
+  .board-grid { min-width: 960px; }
   .categories-row, .questions-row { gap: 8px; }
   .category-header { font-size: 1.125rem; min-height: 76px; }
   .question-cell, .questions-row:last-child .question-cell { min-height: 72px; height: auto; font-size: 2rem; }
@@ -2601,4 +2601,104 @@ button:disabled { opacity: .55; }
   .scoreboard .player { width: auto; max-width: none; margin: 0; padding: 10px 6px; }
   .player-name { font-size: 1rem; overflow-wrap: anywhere; }
   .player-score { font-size: 1.5rem; }
+}
+
+/* Equal outer thirds give the wordmark and controls the same visual space. */
+.game-header {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 28px;
+  min-height: 112px;
+}
+.game-header .game-title {
+  grid-column: 1;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  font-size: clamp(3rem, 9cqw, 7rem);
+  line-height: 1;
+  letter-spacing: -.025em;
+  text-shadow: 2px 3px 0 #082b66;
+}
+.game-header .game-controls {
+  grid-column: 3;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  width: 100%;
+  gap: 8px;
+  margin: 0;
+  align-items: stretch;
+}
+.game-header .game-controls > button,
+.game-header .control-menu > summary {
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  gap: 8px;
+  border-radius: 4px;
+  font-size: clamp(.875rem, 1.1vw, 1rem);
+}
+.game-header .cloud-save-state { grid-column: 1 / -1; text-align: right; }
+.category-header {
+  hyphens: none;
+  font-size: clamp(1.5rem, 2.2vw, 2.125rem);
+  font-weight: 700;
+  line-height: 1.08;
+  min-height: 100px;
+  padding: 16px 10px;
+  letter-spacing: .015em;
+  text-wrap: balance;
+}
+.scoreboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 20px;
+  border-radius: 4px;
+  box-shadow: none;
+  padding: 16px 24px;
+}
+.scoreboard .player {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 8px 12px 14px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.scoreboard .player.active { border-bottom-color: var(--jeopardy-gold); }
+.scoreboard .player-name {
+  color: #fff;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin: 0 0 5px;
+  font-size: clamp(1.125rem, 1.8vw, 1.625rem);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.scoreboard .score { font-size: clamp(1.5rem, 2.2vw, 2rem); margin: 0; }
+@media (max-width: 1050px) and (min-width: 701px) {
+  .game-header { gap: 14px; }
+  .game-header .game-controls { gap: 5px; }
+  .game-header .game-controls > button, .game-header .control-menu > summary { padding: 9px 6px; gap: 4px; }
+  .game-header .control-menu > summary span { display: none; }
+}
+@media (max-width: 700px) {
+  .game-header { grid-template-columns: 1fr; gap: 22px; min-height: 0; margin-bottom: 22px; }
+  .game-header .game-title { font-size: 3.75rem; }
+  .game-header .game-controls { grid-column: 1; gap: 8px; }
+  .game-header .game-controls > button, .game-header .control-menu > summary { font-size: 1rem; }
+  .game-header .control-menu { position: static; }
+  .game-header .control-menu-panel { top: 56px; left: 0; right: 0; width: auto; }
+  .category-header { font-size: 1.5rem; min-height: 100px; padding: 14px 8px; }
+  .scoreboard { padding: 12px 8px; gap: 8px; }
+  .scoreboard .player { padding: 6px 3px 12px; }
+  .scoreboard .player-name { font-size: 1.125rem; }
 }
