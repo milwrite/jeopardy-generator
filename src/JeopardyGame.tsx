@@ -1183,6 +1183,7 @@ export default function JeopardyGame() {
       <nav className="suite-account" aria-label="CUNY account"><a onClick={async event=>{event.preventDefault();if(authUser){if(activeBoard&&gameStateSnapshot(gameState)!==activeBoard.savedSnapshot&&!await persistActiveBoard(activeBoard.name,gameState,draftMetadata))return;location.assign('/my-work/');}else{sessionStorage.setItem('jeopardy-login-draft',JSON.stringify({gameState,metadata:draftMetadata}));location.assign('/auth/start?next=/');}}} href={authUser?'/my-work/':'/auth/start?next=/'}>{authUser?'My work':'CUNY Login'}</a></nav>
       {/* Game Board */}
       <div className="game-board">
+        <header className="game-header">
         <h1 className="game-title">Jeopardy!</h1>
 
         <div className="game-controls" role="group" aria-label="Game controls">
@@ -1230,6 +1231,7 @@ export default function JeopardyGame() {
             {boardSaveState === 'error' && 'Save failed'}{boardSaveState === 'conflict' && 'Reload needed'}
           </span>}
         </div>
+        </header>
 
         {/* AI Settings Modal */}
         {showSettings && (
@@ -1478,8 +1480,10 @@ export default function JeopardyGame() {
           <div 
             key={index} 
             className={`player ${index === gameState.currentPlayer ? 'active' : ''}`}
+            aria-current={index === gameState.currentPlayer ? 'true' : undefined}
           >
             <p className="player-name">{player.name}</p>
+            {index === gameState.currentPlayer && <span className="sr-only">Current player</span>}
             <p className="score">${player.score}</p>
           </div>
         ))}
