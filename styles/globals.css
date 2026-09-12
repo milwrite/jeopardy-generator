@@ -2593,7 +2593,7 @@ button:disabled { opacity: .55; }
 .cloud-modal-input { font-size: 1rem; border-color: #647ea7; }
 .cloud-modal-subtitle, .cloud-modal-note, .cloud-modal-error, .cloud-modal-success { font-size: 1rem; color: #c1d0e8; }
 @media (max-width: 768px) {
-  .board-grid { min-width: 660px; }
+  .board-grid { min-width: 960px; }
   .categories-row, .questions-row { gap: 8px; }
   .category-header { font-size: 1.125rem; min-height: 76px; }
   .question-cell, .questions-row:last-child .question-cell { min-height: 72px; height: auto; font-size: 2rem; }
@@ -2644,6 +2644,7 @@ button:disabled { opacity: .55; }
 }
 .game-header .cloud-save-state { grid-column: 1 / -1; text-align: right; }
 .category-header {
+  hyphens: none;
   font-size: clamp(1.5rem, 2.2vw, 2.125rem);
   font-weight: 700;
   line-height: 1.08;
