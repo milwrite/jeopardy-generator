@@ -20,16 +20,16 @@ test('anonymous users cannot use included inference for any provider', async () 
 
 test('signed-in requests keep their selected model and use verified CUNY gateway identity', async () => {
   let calls = 0;
-  const model = '@cf/qwen/qwen3.8-27b';
+  const model = '@cf/zai-org/glm-5.3';
   const env = {
     PUBLIC_ORIGIN:origin, APP_ID:'jeopardy',
     IDENTITY:{identities:async()=>({ok:true,appJwt:'app-test',gatewayJwt:'gateway-test',workspaceJwt:null})},
     REQUEST_LIMIT:{limit:async()=>({success:true})},
     GATEWAY:{fetch:async(r:Request)=>{
-      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'qwen3.8-27b',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
       calls++;
       assert.equal(r.headers.get('authorization'),'Bearer gateway-test');
-      assert.equal((await r.json() as {model:string}).model,'qwen3.8-27b');
+      assert.equal((await r.json() as {model:string}).model,'glm-5.3');
       return Response.json({model,choices:[]});
     }},
   } as unknown as SuiteEnv;

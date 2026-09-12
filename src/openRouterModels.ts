@@ -8,7 +8,7 @@ export function configuredModelId(saved: string | null, hosted: boolean, useProx
   if (hosted && useProxy) {
     return choice?.id || DEFAULT_GAME_MODEL;
   }
-  return choice?.provider === 'openrouter' ? choice.upstream : gameModel(DEFAULT_GAME_MODEL)!.upstream;
+  return choice?.provider === 'openrouter' ? choice.upstream : 'minimax/minimax-m3';
 }
 
 export const OPENROUTER_MODELS = GAME_MODELS.filter(m => m.provider === 'openrouter').map(m => ({id:m.upstream, label:m.label}));

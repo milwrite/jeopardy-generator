@@ -277,7 +277,7 @@ export default function AISettingsModal({
 
       const storedModelId = localStorage.getItem('jeopardy_model_id');
       const savedModelId = configuredModelId(storedModelId, isHostedSuite(), !savedKey);
-      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. DeepSeek V4.1 Flash is selected for new generations.');
+      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. DeepSeek V4 Flash is selected for new generations.');
       if (savedModelId) {
         const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
         setModelId(normalizedModelId);
