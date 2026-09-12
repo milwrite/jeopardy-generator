@@ -276,13 +276,8 @@ export default function AISettingsModal({
       }
 
       const storedModelId = localStorage.getItem('jeopardy_model_id');
-      const refreshDefault = localStorage.getItem('jeopardy_fast_default_v1') !== 'applied';
-      const savedModelId = configuredModelId(storedModelId, isHostedSuite(), !savedKey, refreshDefault);
-      if (isHostedSuite() && !savedKey) {
-        localStorage.setItem('jeopardy_fast_default_v1', 'applied');
-        if (refreshDefault && gameModel(storedModelId || '')?.id === 'deepseek-v4.1-flash') setModelNotice('Mistral Small 4 is selected for faster boards. You can choose another model.');
-      }
-      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. Mistral Small 4 is selected for new generations.');
+      const savedModelId = configuredModelId(storedModelId, isHostedSuite(), !savedKey);
+      if (storedModelId && !gameModel(storedModelId)) setModelNotice('The previous model is outside this shortlist. DeepSeek V4.1 Flash is selected for new generations.');
       if (savedModelId) {
         const normalizedModelId = normalizeOpenRouterModelId(savedModelId);
         setModelId(normalizedModelId);
@@ -493,7 +488,7 @@ export default function AISettingsModal({
         return;
       }
     } else if (!ollamaModel.trim()) {
-      setTestResult({ success: false, message: 'Please enter an Ollama model name such as llama2 or mistral' });
+      setTestResult({ success: false, message: 'Please enter an Ollama model name such as llama3.2' });
       return;
     }
 

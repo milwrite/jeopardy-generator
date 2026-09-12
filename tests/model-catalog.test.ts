@@ -17,3 +17,18 @@ test('menu and relay share the active shortlist; supported full ids normalize',a
   assert.equal(await resolveGatewayModel(gateway,'gemma-4-31b-it',signal),null);
   assert.equal(await resolveGatewayModel(gateway,'mistral-small-2603',signal),null);
 });
+
+test('requested additions resolve through the active CAIL provider only',async()=>{
+  const gateway={fetch:async()=>Response.json({data:[
+    {id:'kimi-k2.6',provider:'workers-ai',capabilities:['text-generation']},
+    {id:'deepseek-v4-pro',provider:'openrouter',capabilities:['text-generation']},
+    {id:'glm-5.3-flash',provider:'openrouter',capabilities:['text-generation']},
+    {id:'kimi-k3',provider:'workers-ai',capabilities:['text-generation']},
+  ]})};
+  const signal=new AbortController().signal;
+  assert.deepEqual((await gameCatalog(gateway,signal)).map(m=>m.id),['kimi-k2.6','deepseek-v4-pro','glm-5.3-flash']);
+  assert.equal(await resolveGatewayModel(gateway,'@cf/moonshotai/kimi-k2.6',signal),'kimi-k2.6');
+  assert.equal(await resolveGatewayModel(gateway,'deepseek/deepseek-v4-pro',signal),'deepseek-v4-pro');
+  assert.equal(await resolveGatewayModel(gateway,'z-ai/glm-5.3-flash',signal),'glm-5.3-flash');
+  assert.equal(await resolveGatewayModel(gateway,'kimi-k3',signal),null);
+});
