@@ -3,6 +3,7 @@ import { generationBudget } from '../src/gameModels';
 // CUNY session handoff and app-scoped storage. Identity tokens stay in private RPC.
 export type Identity = {ok:true;appJwt:string;gatewayJwt:string;workspaceJwt:string|null};
 export interface SuiteEnv {
+  CAIL_GATEWAY_KEY?:string; // Worker secret; never part of browser configuration.
   ASSETS:{fetch(request:Request):Promise<Response>};
   IDENTITY:{begin(challenge:string,state:string):Promise<{url:string}>;redeem(code:string,verifier:string):Promise<{ok:boolean;token?:string;expiresAt?:number;status?:number}>;identities(token:string):Promise<Identity|{ok:false;status:number}>;revoke(token:string):Promise<unknown>};
   WORK_ACCOUNTS:{register():Promise<unknown>;fetch(request:Request):Promise<Response>};
@@ -83,7 +84,7 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
    // This included-access endpoint always requires verified CUNY identity.
    const target=TOOLS+'/v1/chat/completions';
    const headers=new Headers({'content-type':'application/json'});
-   headers.set('authorization','Bearer '+identity.gatewayJwt);
+   headers.set('authorization','Bearer '+(env.CAIL_GATEWAY_KEY||identity.gatewayJwt));
    const upstream=new Request(target,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.any([request.signal,AbortSignal.timeout(90000)])});
    const response=await env.GATEWAY.fetch(upstream);
    return new Response(response.body,{status:response.status,headers:{...secure,'content-type':response.headers.get('content-type')||'application/json'}});

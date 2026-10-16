@@ -43,3 +43,28 @@ test('expired sign-in never falls back to guest inference', async () => {
   const response = await suite(request('deepseek/deepseek-v4-flash','__Host-jeopardy-session=expired'),env,async()=>Response.json({}));
   assert.equal(response.status,401);
 });
+
+test('server secret funds generation while saving retains the CUNY identity', async () => {
+  const env = {
+    PUBLIC_ORIGIN:origin, APP_ID:'jeopardy', CAIL_GATEWAY_KEY:'server-only-fixture',
+    IDENTITY:{identities:async()=>({ok:true,appJwt:'owner-app',gatewayJwt:'user-inference',workspaceJwt:null})},
+    REQUEST_LIMIT:{limit:async()=>({success:true})},
+    GATEWAY:{fetch:async(r:Request)=>{
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3',provider:'workers-ai',capabilities:['text-generation']}]});
+      assert.equal(r.headers.get('authorization'),'Bearer server-only-fixture');
+      return Response.json({choices:[{message:{content:'generated'}}]});
+    }},
+    WORK_ACCOUNTS:{fetch:async(r:Request)=>{
+      assert.equal(r.headers.get('x-cail-identity-jwt'),'owner-app');
+      assert.equal(r.headers.get('authorization'),null);
+      return Response.json({saved:true});
+    }},
+  } as unknown as SuiteEnv;
+  const generated=await suite(request('glm-5.3','__Host-jeopardy-session=valid'),env,async()=>Response.json({}));
+  assert.equal(generated.status,200);
+  assert.ok(!(await generated.text()).includes(env.CAIL_GATEWAY_KEY!));
+  const saved=await suite(new Request(origin+'/api/work/entries',{headers:{cookie:'__Host-jeopardy-session=valid'}}),env,async()=>Response.json({}));
+  assert.equal(saved.status,200);
+  const unsigned=await suite(request('glm-5.3'),env,async()=>Response.json({}));
+  assert.equal(unsigned.status,401);
+});
