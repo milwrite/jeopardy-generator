@@ -58,6 +58,8 @@ button:disabled { opacity:.55; }
 .categories-row,.questions-row { grid-template-columns:repeat(6,minmax(0,1fr)); }
 .category-header,.question-cell { min-width:0; }
 .category-header { font-family:var(--font-display,'Arial Narrow'),sans-serif; font-size:clamp(1.5rem,2.2vw,2.125rem); font-weight:700; line-height:1.12; min-height:100px; max-height:none; padding:16px 10px; overflow-wrap:anywhere; hyphens:none; letter-spacing:.015em; text-wrap:balance; }
+.category-title-fit { display:flex; justify-content:center; width:100%; min-width:0; }
+.category-title-text { display:block; flex-shrink:0; width:100%; min-width:min-content; word-break:normal; overflow-wrap:normal; hyphens:none; }
 .question-cell,.questions-row:last-child .question-cell { font-family:var(--font-display,'Arial Narrow'),sans-serif; font-size:clamp(1.75rem,3vw,2.75rem); line-height:1.15; }
 .scoreboard { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr)); gap:16px; border-radius:2px; box-shadow:none; padding:16px; }
 .scoreboard .player { width:100%; min-width:0; max-width:none; margin:0; padding:8px 8px 12px; border-radius:0; border-bottom:2px solid transparent; background:transparent; box-shadow:none; }
@@ -114,7 +116,7 @@ button:disabled { opacity:.55; }
   .suite-game-page { padding-inline:6px; }
   .game-board { padding:16px 6px 8px; }
   .categories-row,.questions-row { gap:3px; margin-bottom:4px; }
-  .category-header { font-size:clamp(1rem,2.5vw,1.25rem); line-height:1.2; height:auto; min-height:104px; padding:12px 0; letter-spacing:-.02em; word-break:normal; overflow-wrap:anywhere; hyphens:auto; overflow:visible; }
+  .category-header { font-size:clamp(1rem,2.5vw,1.25rem); font-weight:600; line-height:1.2; height:auto; min-height:104px; padding:12px 0; letter-spacing:-.02em; word-break:normal; overflow-wrap:normal; hyphens:none; overflow:visible; }
   .category-header.editable { padding-top:28px; }
   .question-cell,.questions-row:last-child .question-cell { min-height:60px; height:auto; padding:2px; font-size:clamp(1.125rem,5.2vw,1.75rem); letter-spacing:-.015em; white-space:nowrap; word-break:normal; overflow-wrap:normal; box-shadow:none; }
   .question-cell:hover { transform:none; }

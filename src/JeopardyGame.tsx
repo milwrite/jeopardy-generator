@@ -5,6 +5,7 @@ import { apiFetch } from './apiClient';
 import { initializeCategories, initializePlayers } from './jeopardyDefaults';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import FinalJeopardy from './FinalJeopardy';
+import CategoryTitle from './CategoryTitle';
 import type {
   BoardGenerationResult,
   BoardMetadata,
@@ -1268,7 +1269,7 @@ export default function JeopardyGame() {
                   onKeyDown={event => { if (showEditor && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); handleEditCategory(categoryIndex); } }}
                   onClick={() => handleEditCategory(categoryIndex)}
                 >
-                  {category.title}
+                  <CategoryTitle title={category.title} />
                   {showEditor && (
                     <div className="edit-icon">✏️</div>
                   )}
