@@ -1,4 +1,5 @@
 import '../styles/globals.css';
+import '../styles/suite-navigation.css';
 import type { AppProps } from 'next/app';
 import { Barlow_Condensed, Barlow } from 'next/font/google';
 import ErrorBoundary from '../src/ErrorBoundary';

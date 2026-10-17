@@ -1176,11 +1176,11 @@ export default function JeopardyGame() {
   };
 
   // Full game render
-  if(hydrating)return <main className="suite-loading"><nav className="suite-account" aria-label="CUNY account"><a href="https://games.ailab-452.workers.dev/">Games</a><a href="/auth/start?next=/">CUNY Login</a></nav><p role="status">{saveStatus||'Opening game…'}</p></main>;
+  if(hydrating)return <main className="suite-loading"><nav className="suite-account suite-nav suite-nav-dark" aria-label="CUNY account"><div className="suite-nav-links"><a className="suite-nav-button" href="https://games.ailab-452.workers.dev/">Games</a><a className="suite-nav-button" href="/auth/start?next=/">CUNY Login</a></div></nav><p role="status">{saveStatus||'Opening game…'}</p></main>;
 
   return (
     <div className={`jeopardy-game ${gameTheme}`}>
-      <nav className="suite-account" aria-label="CUNY account"><a href="https://games.ailab-452.workers.dev/" onClick={async event=>{event.preventDefault();if(authUser&&activeBoard&&gameStateSnapshot(gameState)!==activeBoard.savedSnapshot&&!await persistActiveBoard(activeBoard.name,gameState,draftMetadata))return;location.assign('https://games.ailab-452.workers.dev/');}}>Games</a><a onClick={async event=>{event.preventDefault();if(authUser){if(activeBoard&&gameStateSnapshot(gameState)!==activeBoard.savedSnapshot&&!await persistActiveBoard(activeBoard.name,gameState,draftMetadata))return;location.assign('/my-work/');}else{sessionStorage.setItem('jeopardy-login-draft',JSON.stringify({gameState,metadata:draftMetadata}));location.assign('/auth/start?next=/');}}} href={authUser?'/my-work/':'/auth/start?next=/'}>{authUser?'My work':'CUNY Login'}</a></nav>
+      <nav className="suite-account suite-nav suite-nav-dark" aria-label="CUNY account"><div className="suite-nav-links"><a className="suite-nav-button" href="https://games.ailab-452.workers.dev/" onClick={async event=>{event.preventDefault();if(authUser&&activeBoard&&gameStateSnapshot(gameState)!==activeBoard.savedSnapshot&&!await persistActiveBoard(activeBoard.name,gameState,draftMetadata))return;location.assign('https://games.ailab-452.workers.dev/');}}>Games</a><a className="suite-nav-button" onClick={async event=>{event.preventDefault();if(authUser){if(activeBoard&&gameStateSnapshot(gameState)!==activeBoard.savedSnapshot&&!await persistActiveBoard(activeBoard.name,gameState,draftMetadata))return;location.assign('/my-work/');}else{sessionStorage.setItem('jeopardy-login-draft',JSON.stringify({gameState,metadata:draftMetadata}));location.assign('/auth/start?next=/');}}} href={authUser?'/my-work/':'/auth/start?next=/'}>{authUser?'My work':'CUNY Login'}</a></div></nav>
       {/* Game Board */}
       <div className="game-board">
         <header className="game-header">

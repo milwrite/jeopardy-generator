@@ -2464,7 +2464,7 @@ button:disabled {
   content: '✓';
 }
 
-.suite-account{position:absolute;top:14px;right:22px;z-index:40;font:12px/1.4 system-ui,sans-serif}.suite-account a{color:inherit;opacity:.75;text-decoration:none}.suite-account a:hover{opacity:1;text-decoration:underline}.suite-loading{padding:30px}.suite-loading a{float:right}@media(max-width:600px){.suite-account{top:9px;right:14px;font-size:11px}}
+.suite-loading{padding:30px}
 
 @media (max-width: 768px) {
   /* Prevent Safari input zoom without restricting reader-controlled zoom. */
@@ -2538,8 +2538,6 @@ button:disabled { opacity: .55; }
 .game-controls .control-menu-panel .btn-danger { color: #ffc0c0; border-color: #91565d; }
 .control-menu-label { color: #becde5; font-size: 1rem; padding: 6px 4px 0; }
 .game-controls .cloud-save-state { color: #d3e1f6; font: 400 .9375rem/1.4 var(--font-ui, Arial), sans-serif; }
-.suite-account { font: 500 .9375rem/1.4 var(--font-ui, Arial), sans-serif; }
-.suite-account a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 10px; opacity: 1; color: #e3ebf8; }
 .ai-settings-panel { max-width: 620px; padding: 24px; max-height: calc(100dvh - 32px); color: var(--text-primary); }
 .ai-settings-title { font-size: 2rem; text-transform: none; }
 .ai-settings-close { width: 44px; height: 44px; padding: 0; color: #e3ebf8; }
@@ -2577,7 +2575,6 @@ button:disabled { opacity: .55; }
   .ai-settings-modal { padding: 8px; }
   .ai-settings-panel { max-height: calc(100dvh - 16px); padding: 20px 16px; }
   .category-topics-grid { gap: 10px; }
-  .suite-account { top: 4px; right: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -2709,8 +2706,6 @@ button, input, select, textarea, summary { font-family: var(--font-ui, Barlow), 
 button, select, summary, [role=button] { min-height: var(--suite-target); }
 :is(a, button, input, select, textarea, summary):focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 input, select, textarea { font-size: max(16px, 1rem); }
-.suite-account { display: flex; flex-wrap: wrap; gap: 4px; font-family: var(--font-ui, Barlow), Arial, sans-serif; font-size: .9375rem; }
-.suite-account a { min-height: 44px; }
 .game-header .game-controls > button, .game-header .control-menu > summary { font-size: 1rem; white-space: normal; overflow-wrap: normal; }
 .control-menu-panel { max-width: calc(100vw - 32px); }
 .ai-settings-panel, .cloud-modal, .boards-modal, .player-settings-modal { max-width: calc(100vw - 24px); }
@@ -2725,3 +2720,7 @@ input, select, textarea { font-size: max(16px, 1rem); }
  .category-topics-grid { grid-template-columns: 1fr; }
  .boards-modal { padding: 20px 16px; }
 }
+
+/* Reserve the same navigation band used by the other games. */
+.suite-game-page{padding-top:96px}
+@media(max-width:600px){.suite-game-page{padding-top:96px}.game-header{padding-top:0}}
