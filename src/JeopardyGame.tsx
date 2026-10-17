@@ -1254,7 +1254,7 @@ export default function JeopardyGame() {
             onCancel={() => setGameState((currentState) => ({ ...currentState, finalJeopardyActive: false }))}
           />
         ) : (
-          <div className="board-scroll" role="region" aria-label="Game board, six categories" tabIndex={0}>
+          <div className="board-scroll" role="region" aria-label="Game board, six categories">
           <div className="board-grid">
             {/* Categories Header */}
             <div className="categories-row">
@@ -1301,6 +1301,7 @@ export default function JeopardyGame() {
         {selectedQuestion && (
           <div className="question-view">
             <div className="question-content">
+              <p className="question-category">{gameState.categories[selectedQuestion.categoryIndex].title}</p>
               {/* Daily Double Wager Screen */}
               {gameState.categories[selectedQuestion.categoryIndex].questions[selectedQuestion.questionIndex].dailyDouble && showDailyDoubleWager ? (
                 <div className="daily-double-reveal">

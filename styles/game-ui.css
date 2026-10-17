@@ -53,7 +53,10 @@ button:disabled { opacity:.55; }
 .control-menu-label { color:#becde5; font-size:1rem; padding:6px 10px 0; }
 .game-controls .cloud-save-state { grid-column:1/-1; text-align:right; color:#d3e1f6; font:400 .9375rem/1.5 var(--font-ui,Arial),sans-serif; }
 
-.board-scroll { overflow-x:auto; scrollbar-width:auto; scrollbar-color:#93acd1 #102f67; padding-bottom:8px; }
+.board-scroll { width:100%; min-width:0; overflow:visible; padding-bottom:0; }
+.board-grid { width:100%; min-width:0; }
+.categories-row,.questions-row { grid-template-columns:repeat(6,minmax(0,1fr)); }
+.category-header,.question-cell { min-width:0; }
 .category-header { font-family:var(--font-display,'Arial Narrow'),sans-serif; font-size:clamp(1.5rem,2.2vw,2.125rem); font-weight:700; line-height:1.12; min-height:100px; max-height:none; padding:16px 10px; overflow-wrap:anywhere; hyphens:none; letter-spacing:.015em; text-wrap:balance; }
 .question-cell,.questions-row:last-child .question-cell { font-family:var(--font-display,'Arial Narrow'),sans-serif; font-size:clamp(1.75rem,3vw,2.75rem); line-height:1.15; }
 .scoreboard { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr)); gap:16px; border-radius:2px; box-shadow:none; padding:16px; }
@@ -91,6 +94,7 @@ button:disabled { opacity:.55; }
 .fj-sub,.fj-clue,.fj-answer,.clue-text,.answer-text,.correct-response { font-family:var(--font-ui,Arial),sans-serif; line-height:1.5; text-transform:none; }
 .question-view { z-index:100; padding:12px; }
 .question-content { width:min(800px,100%); margin:0; padding:clamp(18px,4vw,32px); border-radius:2px; }
+.question-category { margin:0 0 12px; color:var(--text-primary); font:500 1.125rem/1.5 var(--font-ui,Arial),sans-serif; overflow-wrap:anywhere; }
 .question-text { font-size:clamp(1.25rem,3vw,1.75rem); line-height:1.5; }
 .question-controls .button-row { flex-wrap:wrap; gap:10px; }
 .question-controls .back-button { margin:0; }
@@ -106,10 +110,16 @@ button:disabled { opacity:.55; }
   .control-menu-panel { top:calc(var(--suite-control-height) + 8px); left:0; right:0; width:auto; max-width:none; }
 }
 @media(max-width:768px) {
-  .board-grid { min-width:720px; }
-  .categories-row,.questions-row { gap:8px; }
-  .category-header { font-size:1.5rem; min-height:100px; padding:14px 8px; }
-  .question-cell,.questions-row:last-child .question-cell { min-height:68px; height:auto; font-size:2rem; }
+  /* Six real columns: reclaim gutters before reducing the type scale. */
+  .suite-game-page { padding-inline:6px; }
+  .game-board { padding:16px 6px 8px; }
+  .categories-row,.questions-row { gap:3px; margin-bottom:4px; }
+  .category-header { font-size:clamp(1rem,2.5vw,1.25rem); line-height:1.2; height:auto; min-height:104px; padding:12px 0; letter-spacing:-.02em; word-break:normal; overflow-wrap:anywhere; hyphens:auto; overflow:visible; }
+  .category-header.editable { padding-top:28px; }
+  .question-cell,.questions-row:last-child .question-cell { min-height:60px; height:auto; padding:2px; font-size:clamp(1.125rem,5.2vw,1.75rem); letter-spacing:-.015em; white-space:nowrap; word-break:normal; overflow-wrap:normal; box-shadow:none; }
+  .question-cell:hover { transform:none; }
+  .question-cell:focus-visible { outline:2px solid #fff; outline-offset:-2px; }
+  .question-cell .edit-icon { top:2px; right:2px; font-size:.75rem; }
   .scoreboard { grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:8px; padding:12px 4px; }
   .scoreboard .player { padding:6px 2px 12px; }
 }
