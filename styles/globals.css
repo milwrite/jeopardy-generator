@@ -2702,3 +2702,26 @@ button:disabled { opacity: .55; }
   .scoreboard .player { padding: 6px 3px 12px; }
   .scoreboard .player-name { font-size: 1.125rem; }
 }
+
+/* Suite control scale: Barlow for UI, condensed display only for the board. */
+:root { --suite-target: 44px; }
+button, input, select, textarea, summary { font-family: var(--font-ui, Barlow), Arial, sans-serif; font-size: 1rem; line-height: 1.45; letter-spacing: normal; text-transform: none; }
+button, select, summary, [role=button] { min-height: var(--suite-target); }
+:is(a, button, input, select, textarea, summary):focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+input, select, textarea { font-size: max(16px, 1rem); }
+.suite-account { display: flex; flex-wrap: wrap; gap: 4px; font-family: var(--font-ui, Barlow), Arial, sans-serif; font-size: .9375rem; }
+.suite-account a { min-height: 44px; }
+.game-header .game-controls > button, .game-header .control-menu > summary { font-size: 1rem; white-space: normal; overflow-wrap: normal; }
+.control-menu-panel { max-width: calc(100vw - 32px); }
+.ai-settings-panel, .cloud-modal, .boards-modal, .player-settings-modal { max-width: calc(100vw - 24px); }
+.ai-settings-panel :is(button, input, select, textarea, summary) { font-family: var(--font-ui, Barlow), Arial, sans-serif; font-size: 1rem; line-height: 1.45; }
+.category-header, .question-cell, .questions-row:last-child .question-cell { font-family: var(--font-display, 'Barlow Condensed'), 'Arial Narrow', sans-serif; }
+@media(max-width:600px) {
+ .game-header { grid-template-columns: 1fr; gap: 20px; padding-top: 32px; }
+ .game-header .game-title { grid-column: 1; max-width: 100%; font-size: clamp(3rem, 16vw, 5rem); }
+ .game-header .game-controls { grid-column: 1; grid-template-columns: 1.25fr 1fr 1fr; }
+ .game-header .game-controls > button, .game-header .control-menu > summary { padding: 10px 8px; min-height: 48px; }
+ .ai-settings-panel { width: calc(100vw - 16px); max-width: none; padding: 20px 16px; }
+ .category-topics-grid { grid-template-columns: 1fr; }
+ .boards-modal { padding: 20px 16px; }
+}
