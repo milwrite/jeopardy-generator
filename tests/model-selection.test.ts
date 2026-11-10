@@ -5,10 +5,10 @@ import { configuredModelId, WORKERS_AI_MODEL, WORKERS_AI_MODELS, getOpenRouterMo
 test('MiniMax gets reasoning room for Final without reducing full-board budgets',()=>{
   assert.equal(generationBudget('minimax-m3',600),2048);
   assert.equal(generationBudget('minimax-m3',8000),8000);
-  assert.equal(generationBudget('deepseek-v4-flash-0731',600),600);
+  assert.equal(generationBudget('deepseek-v4.1-flash-1017',600),600);
 });
 test('new sessions and retired choices use the current Featured default',()=>{
-  assert.equal(WORKERS_AI_MODEL,'deepseek-v4-flash-0731');
+  assert.equal(WORKERS_AI_MODEL,'deepseek-v4.1-flash-1017');
   assert.equal(configuredModelId(null,true,true),WORKERS_AI_MODEL);
   assert.equal(configuredModelId('mistralai/mistral-small-2603',true,true),WORKERS_AI_MODEL);
   assert.equal(configuredModelId(null,true,false),'minimax/minimax-m3');
@@ -24,7 +24,7 @@ test('saved supported routes normalize without changing the selected model',()=>
   }
 });
 test('requested models and other Featured text models are available without Mistral',()=>{
-  const expected = ['deepseek-v4-flash-0731','deepseek-v4-pro-0813','kimi-k2.6','glm-5.3','nemotron-3-120b-a12b','kimi-k3','gpt-oss-120b','minimax-m3'];
+  const expected = ['deepseek-v4.1-flash-1017','deepseek-v4-pro-0813','kimi-k2.6','glm-5.3','nemotron-3-120b-a12b','kimi-k3','gpt-oss-120b','minimax-m3'];
   assert.deepEqual(WORKERS_AI_MODELS.map(m=>m.id),expected);
   assert.equal(configuredModelId('@cf/moonshotai/kimi-k2.6',true,true),'kimi-k2.6');
   assert.equal(WORKERS_AI_MODELS.find(m=>m.id==='kimi-k2.6')?.provider,'workers-ai');
@@ -32,15 +32,15 @@ test('requested models and other Featured text models are available without Mist
 });
 
 test('retired Mistral choices use DeepSeek while supported explicit choices remain selected',()=>{
-  assert.equal(configuredModelId('mistral-small-2603',true,true),'deepseek-v4-flash-0731');
+  assert.equal(configuredModelId('mistral-small-2603',true,true),'deepseek-v4.1-flash-1017');
   assert.equal(configuredModelId('mistralai/mistral-small-2603',true,false),'minimax/minimax-m3');
-  assert.equal(configuredModelId('deepseek-v4-flash-0731',true,true),'deepseek-v4-flash-0731');
+  assert.equal(configuredModelId('deepseek-v4.1-flash-1017',true,true),'deepseek-v4.1-flash-1017');
   assert.equal(configuredModelId('minimax-m3',true,true),'minimax-m3');
 });
 
 test('former default and compact Gemma retire while Pro moves to its Workers AI release',()=>{
-  assert.equal(configuredModelId('deepseek-v4.1-flash',true,true),'deepseek-v4-flash-0731');
-  assert.equal(configuredModelId('gemma-4-26b-a4b-it',true,true),'deepseek-v4-flash-0731');
+  assert.equal(configuredModelId('deepseek-v4.1-flash',true,true),'deepseek-v4.1-flash-1017');
+  assert.equal(configuredModelId('gemma-4-26b-a4b-it',true,true),'deepseek-v4.1-flash-1017');
   assert.equal(configuredModelId('deepseek-v4-pro',true,true),'deepseek-v4-pro-0813');
   assert.equal(configuredModelId('deepseek-v4-pro-0813',true,false),'minimax/minimax-m3');
 });

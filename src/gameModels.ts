@@ -2,7 +2,8 @@
 // GLM 5.3 is the available CAIL Workers AI route; Flash is not linked there yet.
 // Only Kimi K3 and MiniMax M3 use OpenRouter.
 export const GAME_MODELS = [
-  { id: 'deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash', group: 'CAIL Featured', provider: 'workers-ai', upstream: '@cf/deepseek-ai/deepseek-v4-flash-0731' },
+  // V4.1 Flash 1017 replaces V4 Flash 0731, which Cloudflare retires on 2026-11-15 (binding name checked 2026-11-09).
+  { id: 'deepseek-v4.1-flash-1017', label: 'DeepSeek V4.1 Flash', group: 'CAIL Featured', provider: 'workers-ai', upstream: '@cf/deepseek-ai/deepseek-v4.1-flash-1017' },
   { id: 'deepseek-v4-pro-0813', label: 'DeepSeek V4 Pro', group: 'CAIL Featured', provider: 'workers-ai', upstream: '@cf/deepseek-ai/deepseek-v4-pro-0813' },
   { id: 'kimi-k2.6', label: 'Kimi K2.6', group: 'Also available', provider: 'workers-ai', upstream: '@cf/moonshotai/kimi-k2.6' },
   { id: 'glm-5.3', label: 'GLM 5.3', group: 'Workers AI', provider: 'workers-ai', upstream: '@cf/zai-org/glm-5.3' },
@@ -11,14 +12,18 @@ export const GAME_MODELS = [
   { id: 'gpt-oss-120b', label: 'GPT OSS 120B', group: 'CAIL Featured', provider: 'workers-ai', upstream: '@cf/openai/gpt-oss-120b' },
   { id: 'minimax-m3', label: 'MiniMax M3', group: 'Also available', provider: 'openrouter', upstream: 'minimax/minimax-m3' },
 ] as const;
-export const DEFAULT_GAME_MODEL = 'deepseek-v4-flash-0731';
+export const DEFAULT_GAME_MODEL = 'deepseek-v4.1-flash-1017';
 export function gameModel(id: string) {
   const aliases: Record<string, string> = {
     'deepseek-v4-pro': 'deepseek-v4-pro-0813',
     'deepseek/deepseek-v4-pro': 'deepseek-v4-pro-0813',
     'deepseek/deepseek-v4-pro-0813': 'deepseek-v4-pro-0813',
-    'deepseek-v4-flash': 'deepseek-v4-flash-0731',
-    'deepseek/deepseek-v4-flash-0731': 'deepseek-v4-flash-0731',
+    // A board or setting saved with the retired Flash carries on with its successor.
+    'deepseek-v4-flash': 'deepseek-v4.1-flash-1017',
+    'deepseek-v4-flash-0731': 'deepseek-v4.1-flash-1017',
+    '@cf/deepseek-ai/deepseek-v4-flash-0731': 'deepseek-v4.1-flash-1017',
+    'deepseek/deepseek-v4-flash-0731': 'deepseek-v4.1-flash-1017',
+    'deepseek-v4.1-flash': 'deepseek-v4.1-flash-1017',
   };
   const normalized = aliases[id] || id;
   return GAME_MODELS.find(model => model.id === normalized || model.upstream === normalized);
