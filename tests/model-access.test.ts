@@ -68,3 +68,20 @@ test('server secret funds generation while saving retains the CUNY identity', as
   const unsigned=await suite(request('glm-5.3'),env,async()=>Response.json({}));
   assert.equal(unsigned.status,401);
 });
+
+test('a model timeout is reported as 504, so the page never treats it as a retryable 503', async () => {
+  let calls = 0;
+  const env = {
+    PUBLIC_ORIGIN:origin, APP_ID:'jeopardy',
+    IDENTITY:{identities:async()=>({ok:true,appJwt:'app-test',gatewayJwt:'gateway-test',workspaceJwt:null})},
+    REQUEST_LIMIT:{limit:async()=>({success:true})},
+    GATEWAY:{fetch:async(r:Request)=>{
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
+      calls++;
+      throw Object.assign(new Error('The operation timed out'),{name:'TimeoutError'});
+    }},
+  } as unknown as SuiteEnv;
+  const response = await suite(request('@cf/zai-org/glm-5.3','__Host-jeopardy-session=test-session'),env,async()=>Response.json({}));
+  assert.equal(response.status,504);
+  assert.equal(calls,1,'the Worker itself makes one attempt');
+});
