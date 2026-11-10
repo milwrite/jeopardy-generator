@@ -5,7 +5,8 @@ export const GAME_MODELS = [
   // V4.1 Flash 1017 replaces V4 Flash 0731, which Cloudflare retires on 2026-11-15 (binding name checked 2026-11-09).
   { id: 'deepseek-v4.1-flash-1017', label: 'DeepSeek V4.1 Flash', group: 'CAIL Featured', provider: 'workers-ai', upstream: '@cf/deepseek-ai/deepseek-v4.1-flash-1017' },
   { id: 'deepseek-v4-pro-0813', label: 'DeepSeek V4 Pro', group: 'CAIL Featured', provider: 'workers-ai', upstream: '@cf/deepseek-ai/deepseek-v4-pro-0813' },
-  { id: 'kimi-k2.6', label: 'Kimi K2.6', group: 'Also available', provider: 'workers-ai', upstream: '@cf/moonshotai/kimi-k2.6' },
+  // Kimi K2.5 through the Lab's Bedrock route replaces K2.6, which leaves Workers AI with the same retirement.
+  { id: 'kimi-k2.5', label: 'Kimi K2.5', group: 'Also available', provider: 'bedrock-mantle', upstream: 'kimi-k2.5' },
   { id: 'glm-5.3', label: 'GLM 5.3', group: 'Workers AI', provider: 'workers-ai', upstream: '@cf/zai-org/glm-5.3' },
   { id: 'nemotron-3-120b-a12b', label: 'Nemotron 3 · 120B', group: 'Workers AI', provider: 'workers-ai', upstream: '@cf/nvidia/nemotron-3-120b-a12b' },
   { id: 'kimi-k3', label: 'Kimi K3', group: 'CAIL Featured', provider: 'openrouter', upstream: 'moonshotai/kimi-k3' },
@@ -24,6 +25,8 @@ export function gameModel(id: string) {
     '@cf/deepseek-ai/deepseek-v4-flash-0731': 'deepseek-v4.1-flash-1017',
     'deepseek/deepseek-v4-flash-0731': 'deepseek-v4.1-flash-1017',
     'deepseek-v4.1-flash': 'deepseek-v4.1-flash-1017',
+    'kimi-k2.6': 'kimi-k2.5',
+    '@cf/moonshotai/kimi-k2.6': 'kimi-k2.5',
   };
   const normalized = aliases[id] || id;
   return GAME_MODELS.find(model => model.id === normalized || model.upstream === normalized);

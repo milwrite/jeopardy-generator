@@ -30,6 +30,8 @@ export function getOpenRouterModelOptions(modelId: string) {
   const choice = gameModel(modelId);
   if(choice?.provider === 'workers-ai' || modelId.startsWith('@cf/'))return {chat_template_kwargs:{enable_thinking:false}};
   if(choice?.provider === 'openrouter')return {reasoning:{enabled:false}};
+  // The Gateway's Bedrock route takes no reasoning controls, so none are sent.
+  if(choice?.provider === 'bedrock-mantle')return {};
   return MODELS_WITH_OPTIONAL_REASONING.has(normalizeOpenRouterModelId(modelId))
     ? { reasoning: { effort: 'none' as const } }
     : {};
