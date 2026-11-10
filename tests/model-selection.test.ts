@@ -20,14 +20,14 @@ test('saved supported routes normalize without changing the selected model',()=>
   for (const {id,provider} of WORKERS_AI_MODELS) {
     assert.equal(configuredModelId(id,true,true),id);
     assert.deepEqual(getOpenRouterBoardResponseFormat(id),{type:'json_object'});
-    assert.deepEqual(getOpenRouterModelOptions(id),provider==='workers-ai'?{chat_template_kwargs:{enable_thinking:false}}:{reasoning:{enabled:false}});
+    assert.deepEqual(getOpenRouterModelOptions(id),provider==='workers-ai'?{chat_template_kwargs:{enable_thinking:false}}:provider==='bedrock-mantle'?{}:{reasoning:{enabled:false}});
   }
 });
 test('requested models and other Featured text models are available without Mistral',()=>{
-  const expected = ['deepseek-v4.1-flash-1017','deepseek-v4-pro-0813','kimi-k2.6','glm-5.3','nemotron-3-120b-a12b','kimi-k3','gpt-oss-120b','minimax-m3'];
+  const expected = ['deepseek-v4.1-flash-1017','deepseek-v4-pro-0813','kimi-k2.5','glm-5.3','nemotron-3-120b-a12b','kimi-k3','gpt-oss-120b','minimax-m3'];
   assert.deepEqual(WORKERS_AI_MODELS.map(m=>m.id),expected);
-  assert.equal(configuredModelId('@cf/moonshotai/kimi-k2.6',true,true),'kimi-k2.6');
-  assert.equal(WORKERS_AI_MODELS.find(m=>m.id==='kimi-k2.6')?.provider,'workers-ai');
+  assert.equal(configuredModelId('@cf/moonshotai/kimi-k2.6',true,true),'kimi-k2.5');
+  assert.equal(WORKERS_AI_MODELS.find(m=>m.id==='kimi-k2.5')?.provider,'bedrock-mantle');
   assert.deepEqual(WORKERS_AI_MODELS.filter(m=>m.provider==='openrouter').map(m=>m.id),['kimi-k3','minimax-m3']);
 });
 

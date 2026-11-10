@@ -21,14 +21,14 @@ test('menu and relay share the active shortlist; supported full ids normalize',a
 
 test('requested additions resolve through the active CAIL provider only',async()=>{
   const gateway={fetch:async()=>Response.json({data:[
-    {id:'kimi-k2.6',provider:'workers-ai',capabilities:['text-generation']},
+    {id:'kimi-k2.5',provider:'bedrock-mantle',capabilities:['text-generation']},
     {id:'deepseek-v4-pro-0813',provider:'workers-ai',capabilities:['text-generation']},
     {id:'nemotron-3-120b-a12b',provider:'workers-ai',capabilities:['text-generation']},
     {id:'kimi-k3',provider:'workers-ai',capabilities:['text-generation']},
   ]})};
   const signal=new AbortController().signal;
-  assert.deepEqual((await gameCatalog(gateway,signal)).map(m=>m.id),['deepseek-v4-pro-0813','kimi-k2.6','nemotron-3-120b-a12b']);
-  assert.equal(await resolveGatewayModel(gateway,'@cf/moonshotai/kimi-k2.6',signal),'kimi-k2.6');
+  assert.deepEqual((await gameCatalog(gateway,signal)).map(m=>m.id),['deepseek-v4-pro-0813','kimi-k2.5','nemotron-3-120b-a12b']);
+  assert.equal(await resolveGatewayModel(gateway,'@cf/moonshotai/kimi-k2.6',signal),'kimi-k2.5');
   assert.equal(await resolveGatewayModel(gateway,'deepseek/deepseek-v4-pro',signal),'deepseek-v4-pro-0813');
   assert.equal(await resolveGatewayModel(gateway,'@cf/nvidia/nemotron-3-120b-a12b',signal),'nemotron-3-120b-a12b');
   assert.equal(await resolveGatewayModel(gateway,'kimi-k3',signal),null);
