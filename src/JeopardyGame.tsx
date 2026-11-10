@@ -248,9 +248,11 @@ export default function JeopardyGame() {
     });
   }, []);
 
-  const activateStoredBoard = useCallback((board: StoredBoard, state: GameState) => {
+  // `sent` is the state as it was when the save left, taken before the request. Reading the
+  // state afterwards would count edits made during the save as already saved.
+  const activateStoredBoard = useCallback((board: StoredBoard, state: GameState, sent: string = gameStateSnapshot(state)) => {
     const { board_data: _boardData, ...summary } = board;
-    setActiveBoard({ ...summary, savedSnapshot: gameStateSnapshot(state) });
+    setActiveBoard({ ...summary, savedSnapshot: sent });
     if(typeof window!=='undefined')history.replaceState(null,'','/?work='+encodeURIComponent(board.id));
     setDraftMetadata(board.metadata);
     setPendingGeneratedSave(false);
@@ -265,6 +267,7 @@ export default function JeopardyGame() {
     if (saveInFlightRef.current) return null;
     saveInFlightRef.current = true;
     setBoardSaveState('saving');
+    const sent = gameStateSnapshot(state);
     try {
       const response = await apiFetch('/api/boards', {
         method: 'POST',
@@ -278,7 +281,7 @@ export default function JeopardyGame() {
       }
 
       const board = (await response.json()) as StoredBoard;
-      activateStoredBoard(board, state);
+      activateStoredBoard(board, state, sent);
       setBoardSaveState('saved');
       setSaveStatus('Saved');
       return board;
@@ -298,6 +301,7 @@ export default function JeopardyGame() {
   ): Promise<StoredBoard | null> => {
     const current = activeBoardRef.current;
     if (!current || saveInFlightRef.current) return null;
+    const sent = gameStateSnapshot(state);
 
     saveInFlightRef.current = true;
     setBoardSaveState('saving');
@@ -319,7 +323,7 @@ export default function JeopardyGame() {
       }
 
       const board = (await response.json()) as StoredBoard;
-      activateStoredBoard(board, state);
+      activateStoredBoard(board, state, sent);
       setBoardSaveState('saved');
       setSaveStatus('Saved');
       return board;
@@ -348,7 +352,8 @@ export default function JeopardyGame() {
       }
       if(!work){const raw=sessionStorage.getItem('jeopardy-login-draft');if(raw){const draft=JSON.parse(raw);if(draft.gameState?.categories){applyGameState(draft.gameState);setDraftMetadata(draft.metadata);setPendingGeneratedSave(true);}sessionStorage.removeItem('jeopardy-login-draft');}}
       if(active)setHydrating(false);
-    })().catch(error=>{if(active)setSaveStatus(error.message);});
+    // A board that cannot be reopened, or a broken draft, must not leave the page on its loading screen.
+    })().catch(error=>{try{sessionStorage.removeItem('jeopardy-login-draft');}catch{}if(active){setSaveStatus(error.message);setHydrating(false);}});
     return()=>{active=false;};
   }, [applyGameState,activateStoredBoard]);
 

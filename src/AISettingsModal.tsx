@@ -652,6 +652,9 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
       let lastError: unknown = null;
 
       while (retries <= maxRetries) {
+        // A dropped connection is asked again only if no response had arrived yet. Once the
+        // model has started answering, a retry would generate, and bill, a second board.
+        let responded = false;
         try {
           if (retries > 0) {
             setGenerationProgress(0);
@@ -664,6 +667,7 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
             mode: 'cors',
             credentials: useProxy ? 'same-origin' : 'omit',
           });
+          responded = true;
 
           if (!response.ok) {
             if (response.status === 400) {
@@ -697,8 +701,11 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
             }
 
             if (response.status >= 500) {
+              // Only 503 (unavailable right now) is asked again. A 502 or 504 arrives after the
+              // service already waited on a model, so that board may have been paid for.
+              if (response.status === 504) throw new Error('The model took too long to answer. Try again, or choose another model.');
               lastError = new Error(`The model service is unavailable (${response.status}). Try again or choose another model.`);
-              if (retries >= maxRetries) throw lastError;
+              if (response.status !== 503 || retries >= maxRetries) throw lastError;
               setGenerationStatus('The model service is reconnecting. Retrying once…');
               await waitForRetry(1500, controller.signal);
               retries++;
@@ -807,7 +814,7 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
           lastError = error;
           if (controller.signal.aborted) throw controller.signal.reason;
 
-          if (error instanceof TypeError) {
+          if (error instanceof TypeError && !responded) {
             retries++;
             if (retries <= maxRetries) {
               setGenerationProgress(0);
@@ -940,7 +947,11 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
           </div>
           <button className="btn-ghost" onClick={testApiKey} disabled={isTesting || testCooldown > 0}>{isTesting ? 'Testing…' : 'Test connection'}</button>
         </details>
-        {isHostedSuite() && useProxy && !signedIn && <p className="model-choice-note"><a href="/auth/start?next=/">CUNY Login</a> to generate a board, or use your API key in More options.</p>}
+        {isHostedSuite() && useProxy && !signedIn && <p className="model-choice-note"><a href="/auth/start?next=/" onClick={event => {
+          // The header link keeps the board on this page through sign-in; use it so nothing is lost.
+          const keeper = document.querySelector<HTMLAnchorElement>('.suite-nav a[href^="/auth/start"]');
+          if (keeper) { event.preventDefault(); keeper.click(); }
+        }}>CUNY Login</a> to generate a board, or use your API key in More options.</p>}
 
         {testResult && (
           <div role="status" className={`ai-test-result${testResult.success ? ' success' : ' error'}`}>

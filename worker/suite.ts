@@ -86,7 +86,12 @@ export async function suite(request:Request,env:SuiteEnv,app:(request:Request,id
    const headers=new Headers({'content-type':'application/json'});
    headers.set('authorization','Bearer '+(env.CAIL_GATEWAY_KEY||identity.gatewayJwt));
    const upstream=new Request(target,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.any([request.signal,AbortSignal.timeout(90000)])});
-   const response=await env.GATEWAY.fetch(upstream);
+   // The 90 second limit is reported as 504, not the catch-all 503: the page retries only 503.
+   let response:Response;
+   try{response=await env.GATEWAY.fetch(upstream);}catch(error){
+    if((error as Error)?.name==='TimeoutError')return json({error:{message:'The model took too long to answer.'}},504);
+    throw error;
+   }
    return new Response(response.body,{status:response.status,headers:{...secure,'content-type':response.headers.get('content-type')||'application/json'}});
   }
   return await app(request,identity);
