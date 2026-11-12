@@ -13,3 +13,10 @@ test('answer leaks, missing specifics, and incorrect response forms remain rejec
   assert.equal(validateQuestionRule('Capitals','The seat of government of France.','Paris').valid,false);
   assert.equal(validateQuestionRule('Capitals','Which municipality is the seat of government of France?','What is Paris?').valid,false);
 });
+
+test('reference-based names may share a domain word without revealing the answer',()=>{
+  assert.equal(validateQuestionRule('Archive Rooms','This room houses the public reading tables.','What is the Copper Room?').valid,true);
+  assert.equal(validateQuestionRule('Collections','This collection contains theater posters.','What is the Marigold Collection?').valid,true);
+  assert.equal(validateQuestionRule('Projects','This project creates a map index.','What is Project Compass?').valid,true);
+  assert.equal(validateQuestionRule('Rooms','The Copper Room houses reading tables.','What is the Copper Room?').valid,false);
+});

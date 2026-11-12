@@ -19,14 +19,15 @@ export const validateQuestionRule = (
   const answerWords = normalizedAnswer.split(/\s+/);
   const allClueWords = [...categoryWords, ...questionWords].filter(word => !commonWords.has(word));
 
-  const overlappingWords = allClueWords.filter((word) =>
-    answerWords.some((answerWord) => answerWord === word)
-  );
-
-  if (overlappingWords.length > 0) {
+  // A shared domain word ("room", "collection", "river") does not reveal a
+  // multiword answer. Flag the named subject only when all of its meaningful
+  // words are already present in the clue/category.
+  const subjectWords = answerWords.filter(word => word && !commonWords.has(word));
+  const clueWords = new Set(allClueWords);
+  if (subjectWords.length > 0 && subjectWords.every(word => clueWords.has(word))) {
     return {
       valid: false,
-      reason: `Answer contains words from the clue or category: ${overlappingWords.join(', ')}`,
+      reason: `The clue or category reveals the answer: ${subjectWords.join(' ')}`,
     };
   }
 
