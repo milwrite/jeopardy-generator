@@ -11,7 +11,9 @@
     "check:worker": "npm run build && wrangler deploy --dry-run",
     "seed:admin": "node scripts/seed-admin.js",
     "lint": "next lint",
-    "test": "tsx --test tests/**/*.test.ts tests/**/*.test.js"
+    "test": "tsx --test tests/**/*.test.ts tests/**/*.test.js",
+    "prebuild": "node scripts/prepare-pdf-worker.mjs",
+    "predev": "node scripts/prepare-pdf-worker.mjs"
   },
   "keywords": [],
   "author": "",
@@ -27,7 +29,9 @@
     "better-sqlite3": "^12.8.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.485.0",
+    "mammoth": "1.13.0",
     "next": "^13.5.11",
+    "pdfjs-dist": "6.5.438",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "serve": "^14.2.1",

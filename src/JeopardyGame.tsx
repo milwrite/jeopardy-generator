@@ -506,12 +506,14 @@ export default function JeopardyGame() {
     return()=>window.clearTimeout(timer);
   },[hydrating,authUser,activeBoard,boardSaveState,pendingGeneratedSave,gameState,draftMetadata,createStoredBoard]);
 
-  const updateFinalRound=useCallback((finalRound:import('./FinalJeopardy').FinalRoundState)=>setGameState(current=>JSON.stringify(current.finalRound)===JSON.stringify(finalRound)?current:{...current,finalRound}),[]);
+  const updateFinalRound=useCallback((finalRound:import('./finalRound').FinalRoundState)=>setGameState(current=>JSON.stringify(current.finalRound)===JSON.stringify(finalRound)?current:{...current,finalRound}),[]);
 
-  const handleGeneratedBoard = ({ categories, metadata }: BoardGenerationResult) => {
+  const handleGeneratedBoard = ({ categories, metadata, referenceMaterials }: BoardGenerationResult) => {
     const nextState: GameState = {
       ...gameState,
       categories,
+      referenceMaterials,
+      finalRound: undefined,
       finalJeopardyActive: false,
     };
 
@@ -1162,7 +1164,7 @@ export default function JeopardyGame() {
   
   // Toggle Final Jeopardy mode
   const activateFinalJeopardy = () => {
-    if (!allQuestionsAnswered()) {
+    if (!gameState.finalRound && !allQuestionsAnswered()) {
       if (!window.confirm("Not all questions have been answered. Are you sure you want to proceed to Final Jeopardy?")) {
         return;
       }
@@ -1170,17 +1172,10 @@ export default function JeopardyGame() {
     
     setGameState({
       ...gameState,
-      finalJeopardyActive: true,
-      finalRound: undefined
+      finalJeopardyActive: true
     });
   };
   
-  // Handle Final Jeopardy wagers and answers
-  const handleFinalJeopardy = () => {
-    // Simplified implementation - would need more UI components
-    alert("Final Jeopardy functionality will be implemented in a future update.");
-  };
-
   // Full game render
   if(hydrating)return <main className="suite-loading"><nav className="suite-account suite-nav suite-nav-dark" aria-label="CUNY account"><div className="suite-nav-links"><a className="suite-nav-button" href="https://games.ailab-452.workers.dev/">Games</a><a className="suite-nav-button" href="/auth/start?next=/">CUNY Login</a></div></nav><p role="status">{saveStatus||'Opening game…'}</p></main>;
 
@@ -1243,6 +1238,7 @@ export default function JeopardyGame() {
         {showSettings && (
           <AISettingsModal
             signedIn={Boolean(authUser)}
+            initialReferences={gameState.referenceMaterials}
             onClose={() => setShowSettings(false)}
             onGeneratedCategories={handleGeneratedBoard}
           />
@@ -1254,8 +1250,12 @@ export default function JeopardyGame() {
             saved={gameState.finalRound}
             onStateChange={updateFinalRound}
             players={gameState.players}
-            onComplete={(players) =>
-              setGameState((currentState) => ({ ...currentState, players, finalJeopardyActive: false }))
+            categories={gameState.categories}
+            referenceMaterials={gameState.referenceMaterials}
+            onComplete={(finalRound) =>
+              setGameState((currentState) => ({ ...currentState,
+                players: currentState.finalRound?.applied ? currentState.players : finalRound.finalPlayers,
+                finalRound, finalJeopardyActive: false }))
             }
             onCancel={() => setGameState((currentState) => ({ ...currentState, finalJeopardyActive: false }))}
           />

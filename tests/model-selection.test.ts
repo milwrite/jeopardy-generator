@@ -24,6 +24,8 @@ test('AWS model requests omit unsupported thinking fields and reserve visible ou
     assert.equal(generationBudget(id,5000),8000);
   }
   assert.deepEqual(getOpenRouterModelOptions('glm-5.3-flash'),{chat_template_kwargs:{enable_thinking:false}});
+  assert.equal(generationBudget('glm-5.3-flash',80),2048);
+  assert.equal(generationBudget('glm-5.3-flash',5000),8000);
   assert.equal(generationBudget(WORKERS_AI_MODEL,80),80);
 });
 test('board and final request only supported output modes and schemas match content',()=>{

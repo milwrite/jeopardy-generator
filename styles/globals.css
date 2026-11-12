@@ -2471,3 +2471,30 @@ button:disabled {
   input:not([type=checkbox]):not([type=range]), select, textarea { font-size: 16px !important; }
   .ai-settings-panel { max-height: 92dvh; }
 }
+
+/* Source documents and the complete final round. */
+.reference-materials { min-width: 0; }
+.reference-materials input[type="file"] { width: 100%; margin: 8px 0; font: inherit; }
+.reference-list { list-style: none; padding: 0; text-align: left; }
+.reference-list li { padding: 12px 0; border-top: 1px solid #455575; overflow-wrap: anywhere; }
+.reference-list li > div { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.reference-list pre { white-space: pre-wrap; max-height: 220px; overflow: auto; font: inherit; background: #101c35; color: #eef3ff; padding: 12px; border-radius: 6px; }
+.reference-error { color: #ffbdba; white-space: pre-line; overflow-wrap: anywhere; }
+.fj-actions { flex-wrap: wrap; }
+.fj-manual { margin: 24px 0; text-align: left; }
+.fj-manual label, .fj-response-entry { display: block; text-align: left; margin: 14px 0; }
+.fj-manual .ai-input, .fj-response-entry .ai-input { display: block; margin-top: 6px; width: 100%; }
+.fj-duration { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 24px; }
+.fj-duration select { background: #152b51; color: #fff; padding: 8px; border: 1px solid #7e8db0; border-radius: 6px; }
+.fj-timer { font-size: 3.5rem; font-variant-numeric: tabular-nums; color: #ffe9a8; margin: 20px 0; }
+.fj-timer small { font-size: 1rem; }
+.fj-review { padding: 16px; margin: 12px 0; text-align: left; border: 1px solid #617399; border-radius: 8px; }
+.fj-written-response { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
+.fj-winner-message { font-size: 1.5rem; color: #ffe9a8; }
+.fj-name small { display: block; font-size: .85rem; font-weight: 400; margin-top: 5px; }
+.final-jeopardy button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 600px) {
+  .fj-row { flex-wrap: wrap; }
+  .fj-row .fj-name { flex-basis: 100%; }
+  .fj-actions button { flex: 1 1 160px; }
+}

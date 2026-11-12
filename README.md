@@ -18,7 +18,7 @@ JeopardyLM is an interactive, customizable Jeopardy-style game built with Next.j
 
 ### Prerequisites
 
-- Node.js (v14 or higher recommended)
+- Node.js 22.13+ (required by PDF.js)
 - npm or yarn
 
 ### Installation
@@ -126,3 +126,11 @@ This project is configured to deploy to GitHub Pages using GitHub Actions. When 
 ## License
 
 This project is licensed under the ISC License - see the LICENSE file for details.
+
+## Reference materials and Final Jeopardy
+
+New board accepts up to five PDF, DOCX, or Markdown files, at most 10 MB each and 96 KB of serialized extracted text combined. Parsing runs in the browser. PDF files must contain searchable text (scan-only files need OCR first). Users can preview extracted text and remove files before generating. Only the extracted text is sent to the selected model; it is included in the board save/export and reused for Final Jeopardy.
+
+Final Jeopardy generates a new clue using the configured model, the existing board, and its references, or accepts a host-prepared clue. The category appears before wagers. Players then have 30, 60, or 90 seconds to write their answers privately. The host records optional typed responses, reveals the answer, and explicitly judges each response before final scores appear. The existing classroom rule lets players at zero or below wager up to $1,000. Ties are displayed, and returning to a finished round cannot apply wagers again. Signed-in board saves retain the phase, responses, and timer deadline.
+
+`npm run dev` and `npm run build` copy the pinned PDF.js worker to `public/`; document parsers load only when needed. `npm test` includes actual PDF/DOCX/Markdown extraction, combined-size limits, final-round recovery, timer math, and scoring regressions.

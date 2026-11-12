@@ -1,244 +1,146 @@
-import { useState, useEffect, useRef } from 'react';
-import {configuredModelId,isHostedSuite,getOpenRouterModelOptions,getFinalClueResponseFormat} from './openRouterModels';
-import { generationBudget } from './gameModels';
-import { parseFinalClue } from './generatedBoard';
-import type { Player } from './jeopardyTypes';
+import { useEffect, useRef, useState } from 'react';
+import { generateFinalClue } from './finalClue';
+import { clampFinalWager, finalTimeRemaining, maxFinalWager, restoreFinalRound, scoreFinalRound, type FJClue, type FinalRoundState } from './finalRound';
+import type { Category, Player } from './jeopardyTypes';
+import type { ReferenceMaterial } from './referenceMaterials';
+export type { FJClue, FinalRoundState } from './finalRound';
 
-export interface FJClue {
-  category: string;
-  clue: string;
-  answer: string;
-}
-
-// Generate one Final Jeopardy clue using whichever model the game is configured
-// for (local vLLM via the shim, or OpenRouter).
-async function generateFinalClue(controller: AbortController): Promise<FJClue> {
-  const deadline = setTimeout(() => controller.abort(new Error('The model did not respond within 45 seconds. Try another model in Config.')), 45_000);
-  try {
-  const g = (k: string, d = '') =>
-    (typeof window !== 'undefined' ? localStorage.getItem(k) || d : d);
-  const prompt =
-    'Generate ONE challenging Final Jeopardy! clue on an interesting topic. ' +
-    'Return ONLY JSON (no markdown, no commentary): ' +
-    '{"category":"CATEGORY NAME","clue":"a difficult declarative statement","answer":"What is X?"}. ' +
-    'The clue must be a statement, never a question, and must not contain the answer words.';
-
-  let content = '';
-  const useProxy = g('jeopardy_ai_provider', 'openrouter') === 'openrouter' && !g('jeopardy_api_key');
-  const model = configuredModelId(g('jeopardy_model_id'), isHostedSuite(), useProxy);
-  if (isHostedSuite() && useProxy) {
-    localStorage.setItem('jeopardy_model_id', model);
-  }
-  if (g('jeopardy_ai_provider', 'openrouter') === 'openrouter') {
-    const r = await fetch(useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions', {
-      signal: controller.signal,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(useProxy
-          ? {}
-          : {
-              Authorization: `Bearer ${g('jeopardy_api_key')}`,
-              'HTTP-Referer': window.location.href,
-              'X-Title': 'Jeopardy Game',
-            }),
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: generationBudget(model,600),
-        ...getOpenRouterModelOptions(model),
-        response_format: getFinalClueResponseFormat(model),
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.6,
-      }),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error?.message || 'Model request failed');
-    content = d.choices?.[0]?.message?.content || '';
-  } else {
-    const r = await fetch(`${g('jeopardy_ollama_url', 'http://localhost:11435')}/api/chat`, {
-      signal: controller.signal,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: g('jeopardy_ollama_model', 'jeopardylm'),
-        stream: false,
-        messages: [{ role: 'user', content: prompt }],
-        options: { temperature: 0.6, num_predict: 300 },
-      }),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error?.message || d.error || 'Model request failed');
-    content = d.message?.content || d.response || '';
-  }
-
-  return parseFinalClue(content);
-  } catch (error) {
-    if (controller.signal.aborted) throw controller.signal.reason;
-    throw error;
-  } finally {
-    clearTimeout(deadline);
-  }
-}
-
-export interface FinalRoundState {phase:'wager'|'clue'|'adjudicate'|'results';wagers:number[];clue:FJClue|null;clueRevealed:boolean;answerRevealed:boolean;correct:boolean[];finalPlayers:Player[]}
 interface Props {
-  saved?:FinalRoundState;
-  onStateChange:(state:FinalRoundState)=>void;
+  saved?: FinalRoundState;
+  onStateChange: (state: FinalRoundState) => void;
   players: Player[];
-  onComplete: (players: Player[]) => void;
+  categories: Category[];
+  referenceMaterials?: ReferenceMaterial[];
+  onComplete: (state: FinalRoundState) => void;
   onCancel: () => void;
 }
 
-export default function FinalJeopardy({ players, onComplete, onCancel, saved, onStateChange }: Props) {
-  const [phase, setPhase] = useState<'wager' | 'clue' | 'adjudicate' | 'results'>(saved?.phase==='clue'&&!saved.clue?'wager':saved?.phase||'wager');
-  const [wagers, setWagers] = useState<number[]>(saved?.wagers||players.map(() => 0));
-  const [clue, setClue] = useState<FJClue | null>(saved?.clue||null);
+const money = (value: number) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+export default function FinalJeopardy({ players, categories, referenceMaterials, onComplete, onCancel, saved, onStateChange }: Props) {
+  const [round, setRound] = useState(() => restoreFinalRound(saved, players));
   const [loading, setLoading] = useState(false);
-  const [generationError, setGenerationError] = useState('');
+  const [error, setError] = useState('');
+  const [now, setNow] = useState(Date.now);
+  const [manual, setManual] = useState<FJClue>({ category: '', clue: '', answer: '' });
   const activeGeneration = useRef<AbortController | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => () => activeGeneration.current?.abort(new Error('Generation cancelled.')), []);
-  const [clueRevealed, setClueRevealed] = useState(saved?.clueRevealed||false);
-  const [answerRevealed, setAnswerRevealed] = useState(saved?.answerRevealed||false);
-  const [correct, setCorrect] = useState<boolean[]>(saved?.correct||players.map(() => false));
-  const [finalPlayers, setFinalPlayers] = useState<Player[]>(saved?.finalPlayers||players);
+  useEffect(() => { onStateChange(round); }, [round, onStateChange]);
+  useEffect(() => { heading.current?.focus(); }, [round.phase]);
+  useEffect(() => {
+    if (round.phase !== 'clue' || round.deadline === null) return;
+    const tick = () => {
+      const time = Date.now(); setNow(time);
+      if (time >= round.deadline!) setRound(previous => previous.phase === 'clue'
+        ? { ...previous, phase: 'answers', remainingMs: 0, deadline: null } : previous);
+    };
+    tick();
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
+  }, [round.phase, round.deadline]);
 
-  useEffect(()=>{onStateChange({phase,wagers,clue,clueRevealed,answerRevealed,correct,finalPlayers});},[phase,wagers,clue,clueRevealed,answerRevealed,correct,finalPlayers,onStateChange]);
-
-  const maxWager = (i: number) => Math.max(players[i].score, 0) || 1000;
-
-  const setWager = (i: number, raw: number) => {
-    const clamped = Math.max(0, Math.min(Math.round(raw || 0), maxWager(i)));
-    setWagers((prev) => prev.map((w, j) => (j === i ? clamped : w)));
-  };
-
-  const beginClue = async () => {
+  const prepare = async () => {
     if (activeGeneration.current) return;
-    const controller = new AbortController();
-    activeGeneration.current = controller;
-    setGenerationError('');
-    setPhase('clue');
-    setLoading(true);
+    const controller = new AbortController(); activeGeneration.current = controller;
+    setLoading(true); setError('');
     try {
-      setClue(await generateFinalClue(controller));
-    } catch (error) {
-      setGenerationError(error instanceof Error ? error.message : 'Generation failed. Try again.');
-      setPhase('wager');
-    } finally {
-      activeGeneration.current = null;
-      setLoading(false);
-    }
+      const clue = await generateFinalClue(controller, categories, referenceMaterials);
+      if (!controller.signal.aborted) setRound(previous => ({ ...previous, clue, phase: 'wager' }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Clue generation failed. Try again or enter your own clue.');
+    } finally { activeGeneration.current = null; setLoading(false); }
   };
 
-  const toResults = () => {
-    const updated = players.map((p, i) => ({
-      ...p,
-      score: p.score + (correct[i] ? wagers[i] : -wagers[i]),
-    }));
-    setFinalPlayers(updated);
-    setPhase('results');
+  const start = () => {
+    const time = Date.now(); setNow(time);
+    setRound(previous => ({ ...previous, phase: 'clue', remainingMs: previous.durationSeconds * 1000, deadline: time + previous.durationSeconds * 1000 }));
   };
+  const seconds = Math.ceil(finalTimeRemaining(round, now) / 1000);
+  const rank = round.finalPlayers.map((player, index) => ({ ...player, index })).sort((a, b) => b.score - a.score);
+  const winners = rank.filter(player => player.score === rank[0]?.score);
+  const allGraded = round.correct.length > 0 && round.correct.every(value => value !== null);
 
-  const ranked = [...finalPlayers]
-    .map((p, i) => ({ ...p, idx: i }))
-    .sort((a, b) => b.score - a.score);
+  return <section className="final-jeopardy" aria-labelledby="final-title">
+    <h2 id="final-title" ref={heading} tabIndex={-1}>Final Jeopardy</h2>
+    <p className="fj-sub">{({ setup: 'Prepare the round', wager: 'Set wagers', clue: 'Time to answer', answers: 'Collect responses', adjudicate: 'Review responses', results: 'Final scores' })[round.phase]}</p>
+    {error && <p role="alert" className="reference-error">{error}</p>}
+    <div className="fj-section">
+      {round.phase === 'setup' && <>
+        <p className="fj-sub">Prepare one final clue with your selected model. Players see the category before they wager.</p>
+        {referenceMaterials?.length ? <p className="fj-sub">Using {referenceMaterials.length} reference {referenceMaterials.length === 1 ? 'file' : 'files'} from this board.</p> : null}
+        {loading ? <><p role="status">Generating the final clue…</p><button className="btn-danger" onClick={() => activeGeneration.current?.abort(new Error('Generation cancelled.'))}>Cancel generation</button></>
+          : <button className="btn-primary" onClick={prepare}>Generate final clue</button>}
+        <details className="fj-manual">
+          <summary>Enter a host-prepared clue</summary>
+          <p className="fj-sub">Prepare this before sharing the screen with players.</p>
+          <label>Category<input className="ai-input" value={manual.category} maxLength={120} onChange={event => setManual({ ...manual, category: event.target.value })} /></label>
+          <label>Clue<textarea className="ai-input" value={manual.clue} maxLength={2000} onChange={event => setManual({ ...manual, clue: event.target.value })} /></label>
+          <label>Correct response<input className="ai-input" value={manual.answer} maxLength={500} onChange={event => setManual({ ...manual, answer: event.target.value })} /></label>
+          <button className="btn-primary" disabled={loading || !Object.values(manual).every(value => value.trim())} onClick={() => { setError(''); setRound({ ...round, clue: { category: manual.category.trim(), clue: manual.clue.trim(), answer: manual.answer.trim() }, phase: 'wager' }); }}>Use this clue</button>
+        </details>
+      </>}
 
-  return (
-    <div className="final-jeopardy">
-      <h2>Final Jeopardy</h2>
-      {generationError && <p role="alert">{generationError} Your wagers are retained.</p>}
+      {round.clue && round.phase !== 'setup' && <div className="fj-category">{round.clue.category}</div>}
+      {round.phase === 'wager' && <>
+        <p className="fj-sub">Wager up to your current score. Classroom rule: players at zero or below may wager up to $1,000. The host records wagers before revealing the clue.</p>
+        {round.baselinePlayers.map((player, i) => <div className="fj-row" key={i}>
+          <label className="fj-name" htmlFor={`final-wager-${i}`}>{player.name} <em>({money(player.score)})</em></label>
+          <input id={`final-wager-${i}`} className="fj-wager-input" type="number" min={0} max={maxFinalWager(player)} step={1} value={round.wagers[i]}
+            onChange={event => setRound({ ...round, wagers: round.wagers.map((wager, j) => i === j ? clampFinalWager(player, Number(event.target.value)) : wager) })} />
+          <span className="fj-max">/ {money(maxFinalWager(player))}</span>
+        </div>)}
+        <label className="fj-duration">Answer time <select value={round.durationSeconds} onChange={event => setRound({ ...round, durationSeconds: Number(event.target.value) })}>
+          <option value={30}>30 seconds</option><option value={60}>60 seconds</option><option value={90}>90 seconds</option>
+        </select></label>
+        <div className="fj-actions"><button className="btn-primary" disabled={!round.baselinePlayers.length} onClick={start}>Lock wagers &amp; reveal clue</button></div>
+      </>}
 
-      {phase === 'wager' && (
-        <div className="fj-section">
-          <p className="fj-sub">Each player wagers up to their score (or $1000 if broke).</p>
-          {players.map((p, i) => (
-            <div className="fj-row" key={i}>
-              <span className="fj-name">{p.name} <em>(${p.score})</em></span>
-              <input
-                type="number"
-                min={0}
-                max={maxWager(i)}
-                value={wagers[i]}
-                onChange={(e) => setWager(i, Number(e.target.value))}
-                className="fj-wager-input"
-              />
-              <span className="fj-max">/ ${maxWager(i)}</span>
-            </div>
-          ))}
-          <div className="fj-actions">
-            <button className="btn-primary" onClick={beginClue}>Lock wagers &amp; reveal category</button>
-            <button className="btn-danger" onClick={onCancel}>Cancel</button>
+      {round.clue && ['clue', 'answers', 'adjudicate', 'results'].includes(round.phase) && <div className="fj-clue">{round.clue.clue}</div>}
+      {round.phase === 'clue' && <>
+        <p className="fj-sub">Write your response privately. The host collects answers when time expires.</p>
+        <div className="fj-timer" role="timer" aria-label={`${seconds} seconds remaining`}>{seconds}<small> seconds{round.deadline === null ? ' · paused' : ''}</small></div>
+        <div className="fj-actions">
+          <button className="btn-primary" onClick={() => { const time = Date.now(); setNow(time); setRound(previous => previous.deadline === null
+            ? { ...previous, deadline: time + previous.remainingMs }
+            : { ...previous, remainingMs: finalTimeRemaining(previous, time), deadline: null }); }}>{round.deadline === null ? 'Resume timer' : 'Pause timer'}</button>
+          <button className="btn-ghost" onClick={() => setRound({ ...round, phase: 'answers', deadline: null, remainingMs: 0 })}>End answer time</button>
+        </div>
+      </>}
+
+      {round.phase === 'answers' && <>
+        <p role="status" className="fj-sub">Time is up. Record each response before revealing the correct answer, or leave these blank if players answered on paper.</p>
+        {round.baselinePlayers.map((player, i) => <label className="fj-response-entry" key={i}>{player.name}&apos;s response
+          <textarea className="ai-input" maxLength={1000} value={round.responses[i]} placeholder="What is…?" onChange={event => setRound({ ...round, responses: round.responses.map((response, j) => i === j ? event.target.value : response) })} />
+        </label>)}
+        <button className="btn-primary" onClick={() => setRound({ ...round, phase: 'adjudicate' })}>Lock responses &amp; reveal answer</button>
+      </>}
+
+      {round.clue && ['adjudicate', 'results'].includes(round.phase) && <div className="fj-answer">Correct response: <strong>{round.clue.answer}</strong></div>}
+      {round.phase === 'adjudicate' && <>
+        <p className="fj-sub">The host judges each response. A correct response adds the wager; an incorrect or missing response subtracts it.</p>
+        {round.baselinePlayers.map((player, i) => <div className="fj-review" key={i}>
+          <p><strong>{player.name}</strong> · wager {money(round.wagers[i])}</p>
+          <p className="fj-written-response">{round.responses[i] || 'No typed response — review the player’s paper answer.'}</p>
+          <div className="fj-judge" role="group" aria-label={`Grade ${player.name}`}>
+            {[true, false].map(correct => <button key={String(correct)} aria-pressed={round.correct[i] === correct}
+              className={`fj-judge-btn${round.correct[i] === correct ? correct ? ' on-correct' : ' on-wrong' : ''}`}
+              onClick={() => setRound({ ...round, correct: round.correct.map((value, j) => i === j ? correct : value) })}>{correct ? 'Correct' : 'Incorrect'}</button>)}
           </div>
-        </div>
-      )}
+        </div>)}
+        {!allGraded && <p className="fj-sub">Mark every response to reveal the results.</p>}
+        <button className="btn-primary" disabled={!allGraded} onClick={() => setRound(scoreFinalRound(round))}>Reveal final scores</button>
+      </>}
 
-      {phase === 'clue' && (
-        <div className="fj-section">
-          {loading ? (
-            <><p className="fj-loading" role="status">Generating the Final Jeopardy clue…</p>
-            <button className="btn-danger" onClick={() => activeGeneration.current?.abort(new Error('Generation cancelled.'))}>Cancel generation</button></>
-          ) : clue ? (
-            <>
-              <div className="fj-category">{clue.category}</div>
-              {clueRevealed ? (
-                <div className="fj-clue">{clue.clue}</div>
-              ) : (
-                <button className="btn-primary" onClick={() => setClueRevealed(true)}>Reveal clue</button>
-              )}
-              {clueRevealed && (answerRevealed ? (
-                <div className="fj-answer">Correct response: <strong>{clue.answer || '—'}</strong></div>
-              ) : (
-                <button className="btn-primary" onClick={() => setAnswerRevealed(true)}>Reveal answer</button>
-              ))}
-              {answerRevealed && (
-                <div className="fj-actions">
-                  <button className="btn-primary" onClick={() => setPhase('adjudicate')}>Score players</button>
-                </div>
-              )}
-            </>
-          ) : null}
-        </div>
-      )}
-
-      {phase === 'adjudicate' && (
-        <div className="fj-section">
-          <p className="fj-sub">Mark each player right or wrong. Right adds their wager; wrong subtracts it.</p>
-          {players.map((p, i) => (
-            <div className="fj-row" key={i}>
-              <span className="fj-name">{p.name} <em>(wager ${wagers[i]})</em></span>
-              <div className="fj-judge">
-                <button
-                  className={`fj-judge-btn${correct[i] ? ' on-correct' : ''}`}
-                  onClick={() => setCorrect((prev) => prev.map((c, j) => (j === i ? true : c)))}
-                >Correct</button>
-                <button
-                  className={`fj-judge-btn${!correct[i] ? ' on-wrong' : ''}`}
-                  onClick={() => setCorrect((prev) => prev.map((c, j) => (j === i ? false : c)))}
-                >Wrong</button>
-              </div>
-            </div>
-          ))}
-          <div className="fj-actions">
-            <button className="btn-primary" onClick={toResults}>Reveal results</button>
-          </div>
-        </div>
-      )}
-
-      {phase === 'results' && (
-        <div className="fj-section">
-          <ol className="fj-results">
-            {ranked.map((p, rank) => (
-              <li key={p.idx} className={rank === 0 ? 'fj-winner' : ''}>
-                <span className="fj-name">{rank === 0 ? '👑 ' : ''}{p.name}</span>
-                <span className="fj-score">${p.score}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="fj-actions">
-            <button className="btn-primary" onClick={() => onComplete(finalPlayers)}>Back to board</button>
-          </div>
-        </div>
-      )}
+      {round.phase === 'results' && <>
+        <p className="fj-winner-message" role="status">{winners.map(player => player.name).join(' & ')} {winners.length > 1 ? 'tie for first place!' : 'wins!'}</p>
+        <ol className="fj-results">{rank.map(player => <li key={player.index} className={player.score === rank[0]?.score ? 'fj-winner' : ''}>
+          <span className="fj-name">{player.name}<small>{money(round.baselinePlayers[player.index].score)} {round.correct[player.index] ? '+' : '−'} {money(round.wagers[player.index])}</small></span>
+          <span className="fj-score">{money(player.score)}</span>
+        </li>)}</ol>
+        <div className="fj-actions"><button className="btn-primary" onClick={() => onComplete({ ...round, applied: true })}>Back to board</button></div>
+      </>}
+      {round.phase !== 'results' && <div className="fj-actions"><button className="btn-ghost" disabled={loading} onClick={onCancel}>Save round &amp; return to board</button></div>}
     </div>
-  );
+  </section>;
 }

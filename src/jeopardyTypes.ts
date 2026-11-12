@@ -35,7 +35,8 @@ export interface GameState {
   players: Player[];
   currentPlayer: number;
   finalJeopardyActive: boolean;
-  finalRound?: import('./FinalJeopardy').FinalRoundState;
+  finalRound?: import('./finalRound').FinalRoundState;
+  referenceMaterials?: import('./referenceMaterials').ReferenceMaterial[];
 }
 
 export interface IncorrectPlayers {
@@ -60,6 +61,7 @@ export interface BoardMetadata {
 
 export interface BoardGenerationResult {
   categories: Category[];
+  referenceMaterials?: import('./referenceMaterials').ReferenceMaterial[];
   metadata: BoardMetadata;
 }
 

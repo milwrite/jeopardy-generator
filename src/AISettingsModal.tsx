@@ -15,12 +15,15 @@ import { logBadResponse, validateQuestionRule } from './questionValidation';
 import type { AIProvider, BoardGenerationResult, BoardMetadata, Category } from './jeopardyTypes';
 import { parseGeneratedBoard, waitForRetry } from './generatedBoard';
 import { gameModel, generationBudget } from './gameModels';
+import ReferenceMaterials from './ReferenceMaterialsField';
+import { referenceContext, type ReferenceMaterial } from './referenceMaterials';
 
 const DEFAULT_SYSTEM_MESSAGE =
   'Write accurate, concise Jeopardy clues with one unambiguous answer each. Clues are declarative statements; answers are phrased as questions. Do not reveal the answer in its clue. Return only the requested JSON.';
 
 interface AISettingsModalProps {
   signedIn: boolean;
+  initialReferences?: ReferenceMaterial[];
   onClose: () => void;
   onGeneratedCategories: (result: BoardGenerationResult) => void;
 }
@@ -146,11 +149,14 @@ const ensureBoardShape = (categories: Category[]) => {
 
 export default function AISettingsModal({
   signedIn,
+  initialReferences = [],
   onClose,
   onGeneratedCategories,
 }: AISettingsModalProps) {
   // Included models use the current CUNY session at the Worker. Personal keys
   // go directly to OpenRouter and use that provider's full model identifiers.
+  const [referenceMaterials, setReferenceMaterials] = useState<ReferenceMaterial[]>(initialReferences);
+  const [parsingReferences, setParsingReferences] = useState(false);
   const [aiProvider, setAiProvider] = useState<AIProvider>('openrouter');
   const [apiKey, setApiKey] = useState('');
   const [showKeyInput, setShowKeyInput] = useState(false);
@@ -257,6 +263,7 @@ export default function AISettingsModal({
   ): BoardGenerationResult => ({
     categories,
     metadata: buildGenerationMetadata(resolvedModel),
+    referenceMaterials,
   });
 
   useEffect(() => {
@@ -466,7 +473,7 @@ export default function AISettingsModal({
   };
 
   const generateQuestions = async () => {
-    if (activeGeneration.current) return;
+    if (activeGeneration.current || parsingReferences) return;
     setTestResult(null);
     if (isHostedSuite() && useProxy && !signedIn) {
       setTestResult({success:false, message:'Sign in with CUNY or enter your own API key.'});
@@ -593,7 +600,7 @@ export default function AISettingsModal({
 ${anyTopics ? `Use these topics in order:\n${topicList}` : 'Choose six varied topics.'}
 ${difficultyGuidance ? `Difficulty guidance:\n${difficultyGuidance}` : ''}
 Return only JSON: {"categories":[{"title":"Category","questions":[{"text":"A specific factual statement","answer":"What is X?"}]}]}.
-Include all 30 clues. The game assigns prices and Daily Doubles.`;
+Include all 30 clues. The game assigns prices and Daily Doubles.${referenceContext(referenceMaterials)}`;
 
       const apiEndpoints = {
         openrouter: useProxy ? '/api/ai/chat' : 'https://openrouter.ai/api/v1/chat/completions',
@@ -917,6 +924,7 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
             </label>)}
           </div>
         </fieldset>
+        <ReferenceMaterials materials={referenceMaterials} onChange={setReferenceMaterials} onBusyChange={setParsingReferences} />
         <details className="generation-options">
           <summary>More options</summary>
           <div className="ai-field-group">
@@ -961,7 +969,7 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
         )}
 
         <div className="ai-action-footer">
-          <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || (isHostedSuite() && useProxy && !availableModels.length)} type="button">
+          <button className="ai-btn-generate" onClick={generateQuestions} disabled={isGenerating || parsingReferences || (isHostedSuite() && useProxy && !availableModels.length)} type="button">
             {isGenerating ? 'Generating…' : 'Generate Board'}
           </button>
         </div>
