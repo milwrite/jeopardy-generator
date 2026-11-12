@@ -1,35 +1,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { gameCatalog, resolveGatewayModel } from '../worker/model-catalog';
-test('menu and relay share the active shortlist; supported full ids normalize',async()=>{
-  const gateway={fetch:async()=>Response.json({data:[
-    {id:'glm-5.3',provider:'workers-ai',capabilities:['text-generation']},
-    {id:'minimax-m3',provider:'openrouter',capabilities:['text-generation']},
-    {id:'kimi-k3',provider:'openrouter',status:'sunset',capabilities:['text-generation']},
-    {id:'deepseek-v4.1-flash-1017',provider:'workers-ai',capabilities:['text-generation']},
-    {id:'mistral-small-2603',provider:'workers-ai',capabilities:['text-generation']},
-  ]})};
+const live=JSON.parse(readFileSync(new URL('./fixtures/cail-models-2026-11-12.json',import.meta.url),'utf8'));
+test('all ten choices intersect the captured live registry, including AWS Kimi and MiniMax',async()=>{
+  const gateway={fetch:async()=>Response.json({data:live})};
   const signal=new AbortController().signal;
-  assert.deepEqual((await gameCatalog(gateway,signal)).map(m=>m.id),['deepseek-v4.1-flash-1017','glm-5.3','minimax-m3']);
-  assert.equal(await resolveGatewayModel(gateway,'@cf/zai-org/glm-5.3',signal),'glm-5.3');
-  assert.equal(await resolveGatewayModel(gateway,'minimax/minimax-m3',signal),'minimax-m3');
-  assert.equal(await resolveGatewayModel(gateway,'deepseek-v4.1-flash-1017',signal),'deepseek-v4.1-flash-1017');
-  assert.equal(await resolveGatewayModel(gateway,'gemma-4-31b-it',signal),null);
-  assert.equal(await resolveGatewayModel(gateway,'kimi-k3',signal),null);
-  assert.equal(await resolveGatewayModel(gateway,'mistral-small-2603',signal),null);
-});
-
-test('requested additions resolve through the active CAIL provider only',async()=>{
-  const gateway={fetch:async()=>Response.json({data:[
-    {id:'kimi-k2.5',provider:'bedrock-mantle',capabilities:['text-generation']},
-    {id:'deepseek-v4-pro-0813',provider:'workers-ai',capabilities:['text-generation']},
-    {id:'nemotron-3-120b-a12b',provider:'workers-ai',capabilities:['text-generation']},
-    {id:'kimi-k3',provider:'workers-ai',capabilities:['text-generation']},
-  ]})};
-  const signal=new AbortController().signal;
-  assert.deepEqual((await gameCatalog(gateway,signal)).map(m=>m.id),['deepseek-v4-pro-0813','kimi-k2.5','nemotron-3-120b-a12b']);
+  const models=await gameCatalog(gateway,signal);
+  assert.equal(models.length,10);
+  assert.equal(models.find(m=>m.id==='kimi-k3')?.provider,'bedrock-runtime');
+  assert.equal(models.find(m=>m.id==='minimax-m2.5')?.provider,'bedrock-mantle');
+  assert.equal(await resolveGatewayModel(gateway,'moonshotai/kimi-k3',signal),'kimi-k3');
   assert.equal(await resolveGatewayModel(gateway,'@cf/moonshotai/kimi-k2.6',signal),'kimi-k2.5');
-  assert.equal(await resolveGatewayModel(gateway,'deepseek/deepseek-v4-pro',signal),'deepseek-v4-pro-0813');
-  assert.equal(await resolveGatewayModel(gateway,'@cf/nvidia/nemotron-3-120b-a12b',signal),'nemotron-3-120b-a12b');
-  assert.equal(await resolveGatewayModel(gateway,'kimi-k3',signal),null);
+  assert.equal(await resolveGatewayModel(gateway,'minimax-m3',signal),'minimax-m2.5');
+  assert.equal(await resolveGatewayModel(gateway,'gemma-4-26b-a4b-it',signal),'gemma-4-26b-a4b-it');
+  assert.equal(await resolveGatewayModel(gateway,'not-in-the-registry',signal),null);
+});
+test('inactive entries, wrong providers, and non-text models never become playable',async()=>{
+  const gateway={fetch:async()=>Response.json({data:[
+    {id:'kimi-k3',provider:'openrouter',capabilities:['text-generation']},
+    {id:'minimax-m2.5',provider:'bedrock-mantle',status:'sunset',capabilities:['text-generation']},
+    {id:'gemma-4-26b-a4b-it',provider:'workers-ai',capabilities:['vision']},
+  ]})};
+  assert.deepEqual(await gameCatalog(gateway,new AbortController().signal),[]);
 });

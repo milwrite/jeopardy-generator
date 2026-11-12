@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import {configuredModelId,isHostedSuite,getOpenRouterModelOptions} from './openRouterModels';
+import {configuredModelId,isHostedSuite,getOpenRouterModelOptions,getFinalClueResponseFormat} from './openRouterModels';
 import { generationBudget } from './gameModels';
 import { parseFinalClue } from './generatedBoard';
 import type { Player } from './jeopardyTypes';
@@ -47,6 +47,7 @@ async function generateFinalClue(controller: AbortController): Promise<FJClue> {
         model,
         max_tokens: generationBudget(model,600),
         ...getOpenRouterModelOptions(model),
+        response_format: getFinalClueResponseFormat(model),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.6,
       }),

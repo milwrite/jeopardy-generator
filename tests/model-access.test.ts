@@ -20,16 +20,16 @@ test('anonymous users cannot use included inference for any provider', async () 
 
 test('signed-in requests keep their selected model and use verified CUNY gateway identity', async () => {
   let calls = 0;
-  const model = '@cf/zai-org/glm-5.3';
+  const model = '@cf/zai-org/glm-5.3-flash';
   const env = {
     PUBLIC_ORIGIN:origin, APP_ID:'jeopardy',
     IDENTITY:{identities:async()=>({ok:true,appJwt:'app-test',gatewayJwt:'gateway-test',workspaceJwt:null})},
     REQUEST_LIMIT:{limit:async()=>({success:true})},
     GATEWAY:{fetch:async(r:Request)=>{
-      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3-flash',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
       calls++;
       assert.equal(r.headers.get('authorization'),'Bearer gateway-test');
-      assert.equal((await r.json() as {model:string}).model,'glm-5.3');
+      assert.equal((await r.json() as {model:string}).model,'glm-5.3-flash');
       return Response.json({model,choices:[]});
     }},
   } as unknown as SuiteEnv;
@@ -50,7 +50,7 @@ test('server secret funds generation while saving retains the CUNY identity', as
     IDENTITY:{identities:async()=>({ok:true,appJwt:'owner-app',gatewayJwt:'user-inference',workspaceJwt:null})},
     REQUEST_LIMIT:{limit:async()=>({success:true})},
     GATEWAY:{fetch:async(r:Request)=>{
-      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3',provider:'workers-ai',capabilities:['text-generation']}]});
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3-flash',provider:'workers-ai',capabilities:['text-generation']}]});
       assert.equal(r.headers.get('authorization'),'Bearer server-only-fixture');
       return Response.json({choices:[{message:{content:'generated'}}]});
     }},
@@ -60,12 +60,12 @@ test('server secret funds generation while saving retains the CUNY identity', as
       return Response.json({saved:true});
     }},
   } as unknown as SuiteEnv;
-  const generated=await suite(request('glm-5.3','__Host-jeopardy-session=valid'),env,async()=>Response.json({}));
+  const generated=await suite(request('glm-5.3-flash','__Host-jeopardy-session=valid'),env,async()=>Response.json({}));
   assert.equal(generated.status,200);
   assert.ok(!(await generated.text()).includes(env.CAIL_GATEWAY_KEY!));
   const saved=await suite(new Request(origin+'/api/work/entries',{headers:{cookie:'__Host-jeopardy-session=valid'}}),env,async()=>Response.json({}));
   assert.equal(saved.status,200);
-  const unsigned=await suite(request('glm-5.3'),env,async()=>Response.json({}));
+  const unsigned=await suite(request('glm-5.3-flash'),env,async()=>Response.json({}));
   assert.equal(unsigned.status,401);
 });
 
@@ -76,12 +76,12 @@ test('a model timeout is reported as 504, so the page never treats it as a retry
     IDENTITY:{identities:async()=>({ok:true,appJwt:'app-test',gatewayJwt:'gateway-test',workspaceJwt:null})},
     REQUEST_LIMIT:{limit:async()=>({success:true})},
     GATEWAY:{fetch:async(r:Request)=>{
-      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
+      if(new URL(r.url).pathname==='/v1/catalog')return Response.json({data:[{id:'glm-5.3-flash',provider:'workers-ai',status:'active',capabilities:['text-generation']}]});
       calls++;
       throw Object.assign(new Error('The operation timed out'),{name:'TimeoutError'});
     }},
   } as unknown as SuiteEnv;
-  const response = await suite(request('@cf/zai-org/glm-5.3','__Host-jeopardy-session=test-session'),env,async()=>Response.json({}));
+  const response = await suite(request('@cf/zai-org/glm-5.3-flash','__Host-jeopardy-session=test-session'),env,async()=>Response.json({}));
   assert.equal(response.status,504);
   assert.equal(calls,1,'the Worker itself makes one attempt');
 });

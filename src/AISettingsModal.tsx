@@ -619,12 +619,12 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
               { role: 'system', content: systemMessage },
               { role: 'user', content: prompt },
             ],
-            max_tokens: gameModel(modelId)?.id === 'minimax-m3' ? 8000 : 5000,
+            max_tokens: generationBudget(modelId, 5000),
             temperature,
             stream: true,
             ...getOpenRouterModelOptions(modelId),
             response_format: getOpenRouterBoardResponseFormat(modelId),
-            provider: { require_parameters: true },
+            ...(!useProxy ? { provider: { require_parameters: true } } : {}),
           }),
         },
         ollama: {
@@ -903,7 +903,7 @@ Include all 30 clues. The game assigns prices and Daily Doubles.`;
             {(isHostedSuite() && useProxy ? WORKERS_AI_MODELS.filter(model => availableModels.includes(model.id)) : OPENROUTER_MODELS)
               .map(({id, label}) => <option key={id} value={id}>{label}{id === WORKERS_AI_MODEL || id === gameModel(WORKERS_AI_MODEL)?.upstream ? ' (recommended)' : ''}</option>)}
           </select>
-          {modelId === 'minimax-m3' && <p className="model-choice-note">MiniMax usually takes longer to build a full board.</p>}
+          {gameModel(modelId)?.id === 'minimax-m2.5' && <p className="model-choice-note">MiniMax usually takes longer to build a full board.</p>}
           {modelNotice && <p className="model-choice-note" role="status">{modelNotice}</p>}
         </div>}
         <fieldset className="ai-field-group category-topics">

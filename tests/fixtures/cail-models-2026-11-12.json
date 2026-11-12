@@ -1,0 +1,700 @@
+[
+  {
+    "id": "gemma-3-12b-it",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "gemma-3-27b-it",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "gemma-3-4b-it",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision"
+    ]
+  },
+  {
+    "id": "magistral-small-2509",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "voxtral-mini-3b-2507",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "voxtral-small-24b-2507",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "kimi-k2.5",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "gpt-oss-120b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "gpt-oss-20b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "gpt-oss-safeguard-120b",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "gpt-oss-safeguard-20b",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "qwen3-coder-next",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "glm-4.7",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "glm-4.7-flash",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "glm-5",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "kimi-k3",
+    "provider": "bedrock-runtime",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "glm-5.3",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "gemma-sea-lion-v4-27b-it",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "flux-1-schnell",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "image",
+    "capabilities": [
+      "text-to-image"
+    ]
+  },
+  {
+    "id": "deepseek-v4-flash-0731",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "deepseek-v4-pro-0813",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "deepseek-v4.1-flash-1017",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "vision"
+    ]
+  },
+  {
+    "id": "gemma-4-26b-a4b-it",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "vision"
+    ]
+  },
+  {
+    "id": "llama-3.2-11b-vision-instruct",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision"
+    ]
+  },
+  {
+    "id": "llama-guard-3-8b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "kimi-k2.6",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "vision"
+    ]
+  },
+  {
+    "id": "kimi-k2.7-code",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "vision"
+    ]
+  },
+  {
+    "id": "qwen2.5-coder-32b-instruct",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "qwen3.8-27b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "vision"
+    ]
+  },
+  {
+    "id": "qwq-32b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "glm-5.2",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "glm-5.3-flash",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning",
+      "vision"
+    ]
+  },
+  {
+    "id": "deepseek-r1-distill-qwen-32b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "gemma-2b-it-lora",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "gemma-7b-it-lora",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "granite-4.0-h-micro",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling"
+    ]
+  },
+  {
+    "id": "llama-2-7b-chat-hf-lora",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "llama-3.1-8b-instruct-fp8",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "llama-3.2-1b-instruct",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "llama-3.2-3b-instruct",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "llama-3.3-70b-instruct-fp8-fast",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling"
+    ]
+  },
+  {
+    "id": "llama-4-scout-17b-16e-instruct",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "vision"
+    ]
+  },
+  {
+    "id": "mistral-7b-instruct-v0.2-lora",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation"
+    ]
+  },
+  {
+    "id": "mistral-small-3.1-24b-instruct",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "vision"
+    ]
+  },
+  {
+    "id": "melotts",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-to-speech"
+    ]
+  },
+  {
+    "id": "nemotron-3-120b-a12b",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "whisper",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "automatic-speech-recognition"
+    ]
+  },
+  {
+    "id": "whisper-large-v3-turbo",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "automatic-speech-recognition"
+    ]
+  },
+  {
+    "id": "whisper-tiny-en",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "automatic-speech-recognition"
+    ]
+  },
+  {
+    "id": "qwen3-30b-a3b-fp8",
+    "provider": "workers-ai",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "v3.2",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "minimax-m2",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "minimax-m2.1",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "minimax-m2.5",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "devstral-2-123b",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "ministral-3-14b-instruct",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "ministral-3-3b-instruct",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "ministral-3-8b-instruct",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "mistral-large-3-675b-instruct",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "nemotron-nano-12b-v2",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "nemotron-nano-3-30b",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "nemotron-nano-9b-v2",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output"
+    ]
+  },
+  {
+    "id": "nemotron-super-3-120b",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "function-calling",
+      "structured-output",
+      "reasoning"
+    ]
+  },
+  {
+    "id": "qwen3-vl-235b-a22b-instruct",
+    "provider": "bedrock-mantle",
+    "status": "active",
+    "modality": "text",
+    "capabilities": [
+      "text-generation",
+      "vision",
+      "function-calling"
+    ]
+  }
+]

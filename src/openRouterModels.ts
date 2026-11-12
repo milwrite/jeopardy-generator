@@ -8,10 +8,10 @@ export function configuredModelId(saved: string | null, hosted: boolean, useProx
   if (hosted && useProxy) {
     return choice?.id || DEFAULT_GAME_MODEL;
   }
-  return choice?.provider === 'openrouter' ? choice.upstream : 'minimax/minimax-m3';
+  return choice?.id === 'kimi-k3' ? 'moonshotai/kimi-k3' : 'minimax/minimax-m2.5';
 }
 
-export const OPENROUTER_MODELS = GAME_MODELS.filter(m => m.provider === 'openrouter').map(m => ({id:m.upstream, label:m.label}));
+export const OPENROUTER_MODELS = [{id:'moonshotai/kimi-k3',label:'Kimi K3'}, {id:'minimax/minimax-m2.5',label:'MiniMax M2.5'}];
 
 const LEGACY_MODEL_IDS: Record<string, string> = {
   'z-ai/glm-5.2-flash': 'z-ai/glm-5.2',
@@ -31,17 +31,28 @@ export function getOpenRouterModelOptions(modelId: string) {
   if(choice?.provider === 'workers-ai' || modelId.startsWith('@cf/'))return {chat_template_kwargs:{enable_thinking:false}};
   if(choice?.provider === 'openrouter')return {reasoning:{enabled:false}};
   // The Gateway's Bedrock route takes no reasoning controls, so none are sent.
-  if(choice?.provider === 'bedrock-mantle')return {};
+  if(choice?.provider.startsWith('bedrock-'))return {};
   return MODELS_WITH_OPTIONAL_REASONING.has(normalizeOpenRouterModelId(modelId))
     ? { reasoning: { effort: 'none' as const } }
     : {};
 }
 
 export function getOpenRouterBoardResponseFormat(modelId: string) {
-  return (Boolean(gameModel(modelId)) || modelId.startsWith('@cf/') || normalizeOpenRouterModelId(modelId) === 'google/gemini-3.1-flash-lite')
-    ? { type: 'json_object' as const }
-    : JEOPARDY_BOARD_RESPONSE_FORMAT;
+  const model = gameModel(modelId);
+  return model && !model.structuredOutput ? { type: 'json_object' as const } : JEOPARDY_BOARD_RESPONSE_FORMAT;
 }
+
+export function getFinalClueResponseFormat(modelId: string) {
+  const model = gameModel(modelId);
+  return model && !model.structuredOutput ? { type: 'json_object' as const } : FINAL_CLUE_RESPONSE_FORMAT;
+}
+
+export const FINAL_CLUE_RESPONSE_FORMAT = {
+  type: 'json_schema', json_schema: { name: 'final_jeopardy', strict: true, schema: {
+    type: 'object', properties: {category:{type:'string'},clue:{type:'string'},answer:{type:'string'}},
+    required:['category','clue','answer'], additionalProperties:false,
+  } },
+} as const;
 
 export const JEOPARDY_BOARD_RESPONSE_FORMAT = {
   type: 'json_schema',
@@ -68,10 +79,8 @@ export const JEOPARDY_BOARD_RESPONSE_FORMAT = {
                   properties: {
                     text: { type: 'string' },
                     answer: { type: 'string' },
-                    value: { type: 'integer', enum: [200, 400, 600, 800, 1000] },
-                    dailyDouble: { type: 'boolean' },
                   },
-                  required: ['text', 'answer', 'value', 'dailyDouble'],
+                  required: ['text', 'answer'],
                   additionalProperties: false,
                 },
               },
