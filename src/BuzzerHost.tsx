@@ -12,7 +12,7 @@ export function useBuzzerHost(state: GameState, setState: Setter, selected: Sele
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const audio = useRef<AudioContext | null>(null);
@@ -30,7 +30,7 @@ export function useBuzzerHost(state: GameState, setState: Setter, selected: Sele
   const dailyDouble = Boolean(question?.dailyDouble);
 
   useEffect(() => {
-    setMuted(readPreference('jeopardy.buzzer.muted') === 'true');
+    setMuted(readPreference('jeopardy.buzzer.muted') !== 'false');
     buzzerRequest('status').then(() => setAvailable(true)).catch(() => setAvailable(false));
     return () => { void audio.current?.close(); };
   }, []);
@@ -113,6 +113,11 @@ export function useBuzzerHost(state: GameState, setState: Setter, selected: Sele
     }
   };
   const disconnect = () => { setState(current => ({ ...current, buzzerRoomCode: undefined })); setRoom(null); setError(''); };
+  const previewSound = async () => {
+    armAudio();
+    try { if (audio.current?.state === 'suspended') await audio.current.resume(); } catch { return; }
+    if (audio.current) playBuzzerCue(audio.current);
+  };
   const toggleMute = () => { armAudio(); setMuted(!muted); writePreference('jeopardy.buzzer.muted', String(!muted)); };
   const ready = connected && room?.round?.clueKey === clueKey && !dailyDouble;
   const round = room?.round;
@@ -122,15 +127,22 @@ export function useBuzzerHost(state: GameState, setState: Setter, selected: Sele
   const lock = (answerRevealed = false) => command('lock', { roundId: round?.id, answerRevealed });
   const score = (correct: boolean) => command('score', { roundId: round?.id, participantId: next?.participantId, correct });
   return { code, room, error, pending, connected, muted, available, showSetup, setShowSetup,
-    start, end, disconnect, toggleMute, ready, round, nextPlayer, open, lock, score, dailyDouble };
+    start, end, disconnect, toggleMute, previewSound, ready, round, nextPlayer, open, lock, score, dailyDouble };
 }
 
 type Host = ReturnType<typeof useBuzzerHost>;
+function BuzzerSoundControls({ host }: { host: Host }) {
+  return <div className="buzzer-sound-controls" role="group" aria-label="Buzzer sound">
+    <button className="btn-ghost" aria-pressed={!host.muted} onClick={host.toggleMute}>Sound: {host.muted ? 'Off' : 'On'}</button>
+    <button className="btn-ghost" onClick={host.previewSound}>Preview sound</button>
+  </div>;
+}
 export function BuzzerSetup({ host }: { host: Host }) {
   if (!host.showSetup) return null;
   const joinUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/buzz/?room=${host.code}`;
   return <section className="buzzer-setup" aria-label="Remote buzzer setup">
     <div className="buzzer-heading"><h2>Remote buzzers</h2><button onClick={() => host.setShowSetup(false)} className="btn-ghost">Close setup</button></div>
+    <BuzzerSoundControls host={host} />
     {!host.code ? <>
       <p>Players join with a display name on their own phone or computer. Share the board in your call.</p>
       <p>Empty default player slots are replaced by joined players. Existing names and scores stay.</p>
@@ -156,7 +168,7 @@ export function BuzzerClueControls({ host, onFinish }: { host: Host; onFinish: (
   const resolved = host.round?.state === 'resolved';
   const first = host.room?.participants.find(player => player.id === host.round?.order[0]?.participantId);
   return <section className="buzzer-clue" aria-label="Host buzzer controls">
-    <div className="buzzer-heading"><h3>Room {host.code}</h3><button className="btn-ghost" aria-pressed={host.muted} onClick={host.toggleMute}>{host.muted ? 'Unmute buzzer sound' : 'Mute buzzer sound'}</button></div>
+    <div className="buzzer-heading"><h3>Room {host.code}</h3><BuzzerSoundControls host={host} /></div>
     <p className="buzzer-status" role="status" aria-live="polite">
       {!host.ready ? 'Connecting to this clue…' : resolved ? 'Clue scored — buzzers locked' : host.round?.state === 'open' ? 'Buzzers open' : 'Buzzers locked'}
       {first && <> · First buzz: <strong>{first.name}</strong></>}
@@ -181,18 +193,33 @@ export function BuzzerClueControls({ host, onFinish }: { host: Host; onFinish: (
   </section>;
 }
 
-export function BuzzerDock({ host, clueOpen, onFinish }: { host: Host; clueOpen: boolean; onFinish: () => void }) {
+export function BuzzerDock({ host, clueOpen, onFinish, hidden = false }: { host: Host; clueOpen: boolean; onFinish: () => void; hidden?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   useEffect(() => { setExpanded(readPreference('jeopardy.buzzer.expanded') === 'true'); }, []);
-  if (!host.code) return null;
+  const dock = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const element = dock.current;
+    const game = element?.closest<HTMLElement>('.jeopardy-game');
+    if (!element || !game || hidden || !host.code) return;
+    const measure = () => {
+      const box = element.getBoundingClientRect();
+      game.style.setProperty('--buzzer-dock-height', `${Math.ceil(box.height)}px`);
+      game.style.setProperty('--buzzer-dock-width', `${Math.ceil(box.width)}px`);
+    };
+    game.classList.add('has-buzzer-dock'); measure();
+    const observer = new ResizeObserver(measure); observer.observe(element);
+    return () => { observer.disconnect(); game.classList.remove('has-buzzer-dock');
+      game.style.removeProperty('--buzzer-dock-height'); game.style.removeProperty('--buzzer-dock-width'); };
+  }, [host.code, hidden]);
+  if (!host.code || hidden) return null;
   const first = host.room?.participants.find(player => player.id === host.round?.order[0]?.participantId);
   const status = !host.connected ? 'Reconnecting' : !clueOpen ? 'Waiting for a clue' : host.dailyDouble ? 'Daily Double · locked' :
     !host.ready ? 'Preparing clue' : host.round?.state === 'resolved' ? 'Scored · locked' : host.round?.state === 'open' ? 'Open' : 'Locked';
   const toggle = () => { writePreference('jeopardy.buzzer.expanded', String(!expanded)); setExpanded(!expanded); };
-  return <aside className={`buzzer-dock${expanded ? ' buzzer-dock-expanded' : ''}`} aria-label="Buzzer dock">
+  return <aside ref={dock} className={`buzzer-dock${expanded ? ' buzzer-dock-expanded' : ''}`} aria-label="Buzzer dock">
     {expanded && <div id="buzzer-dock-panel" className="buzzer-dock-panel">
       {clueOpen ? <BuzzerClueControls host={host} onFinish={onFinish} /> : <div className="buzzer-dock-lobby">
-        <h2>Room {host.code}</h2><p>{host.room?.participants.length || 0} players joined</p>
+        <h2>Room {host.code}</h2><BuzzerSoundControls host={host} /><p>{host.room?.participants.length || 0} players joined</p>
         <ul>{host.room?.participants.map(player => <li key={player.id}>{player.name}</li>)}</ul>
         <button className="btn-ghost" onClick={() => host.setShowSetup(true)}>Room &amp; join link</button>
         {host.error && <p role="alert">{host.error}</p>}

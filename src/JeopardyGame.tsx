@@ -1495,7 +1495,7 @@ export default function JeopardyGame() {
         )}
       </div>
       
-      <BuzzerDock host={buzzer} clueOpen={Boolean(selectedQuestion)} onFinish={finishBuzzerClue} />
+      <BuzzerDock hidden={Boolean(showSettings || showAuth || showBoards || showSaveBoard || showPlayerSettings || editingCategory || editingQuestion)} host={buzzer} clueOpen={Boolean(selectedQuestion)} onFinish={finishBuzzerClue} />
       {/* Scoreboard */}
       <div className="scoreboard">
         {gameState.players.map((player, index) => (

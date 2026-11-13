@@ -23,7 +23,7 @@
 .buzz-button.buzz-ready{background:#ffe168;border-color:#fff1b6;color:#071331;box-shadow:0 6px 0 #bd9733;cursor:pointer}
 .buzz-button:focus-visible,.buzzer-setup button:focus-visible,.buzzer-clue button:focus-visible{outline:4px solid #fff;outline-offset:4px}
 .buzzer-first{font-size:1.2rem;background:#243f7e;padding:12px;border-radius:8px}
-.buzzer-dock{position:fixed;right:18px;bottom:18px;z-index:2000;width:280px;max-width:calc(100vw - 24px);font-family:Arial,sans-serif;color:#fff;filter:drop-shadow(0 6px 16px #0009)}
+.buzzer-dock{position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));z-index:120;width:280px;max-width:calc(100vw - 24px);font-family:Arial,sans-serif;color:#fff;filter:drop-shadow(0 6px 16px #0009)}
 .buzzer-dock-expanded{width:370px}
 .buzzer-dock-toggle{display:block;width:100%;text-align:left;background:#112753;border:1px solid #7791bb;border-radius:12px;padding:12px 16px;color:#fff;cursor:pointer}
 .buzzer-dock-title{display:flex;justify-content:space-between;color:#ffe168;font-weight:700;font-size:1rem}
@@ -2538,4 +2538,18 @@ button:disabled {
   .fj-row { flex-wrap: wrap; }
   .fj-row .fj-name { flex-basis: 100%; }
   .fj-actions button { flex: 1 1 160px; }
+}
+
+/* Reserve space for the dock so it never covers a clue or page control. */
+.buzzer-sound-controls{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.buzzer-dock .buzzer-sound-controls button{font-size:.85rem}
+@media(min-width:1100px){
+  .jeopardy-game.has-buzzer-dock{padding-right:calc(var(--buzzer-dock-width,280px) + 20px)}
+  .jeopardy-game.has-buzzer-dock .question-view{right:calc(var(--buzzer-dock-width,280px) + 36px);width:auto}
+}
+@media(max-width:1099px){
+  .buzzer-dock{right:12px;bottom:max(12px,env(safe-area-inset-bottom))}
+  .buzzer-dock-panel{max-height:40dvh}
+  .jeopardy-game.has-buzzer-dock{max-height:calc(100dvh - var(--buzzer-dock-height,90px) - 128px);overflow-y:auto;overscroll-behavior:contain}
+  .jeopardy-game.has-buzzer-dock .question-view{bottom:calc(var(--buzzer-dock-height,90px) + 24px);height:auto;width:auto;right:0}
 }
