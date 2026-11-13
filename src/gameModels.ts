@@ -66,12 +66,12 @@ export const GAME_MODELS: ReadonlyArray<{id:string;label:string;group:string;pro
     "structuredOutput": true
   },
   {
-    "id": "gpt-oss-120b",
-    "label": "GPT OSS 120B",
+    "id": "llama-3.3-70b-instruct-fp8-fast",
+    "label": "Llama 3.3 · 70B",
     "group": "CAIL Featured",
     "provider": "workers-ai",
-    "upstream": "@cf/openai/gpt-oss-120b",
-    "structuredOutput": true
+    "upstream": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "structuredOutput": false
   },
   {
     "id": "qwen3.8-27b",
@@ -84,6 +84,8 @@ export const GAME_MODELS: ReadonlyArray<{id:string;label:string;group:string;pro
 ];
 export const DEFAULT_GAME_MODEL = 'deepseek-v4.1-flash-1017';
 const ALIASES: Record<string,string> = {
+  "gpt-oss-120b": "llama-3.3-70b-instruct-fp8-fast",
+  "@cf/openai/gpt-oss-120b": "llama-3.3-70b-instruct-fp8-fast",
   "deepseek-v4-pro": "deepseek-v4-pro-0813",
   "deepseek/deepseek-v4-pro": "deepseek-v4-pro-0813",
   "deepseek/deepseek-v4-pro-0813": "deepseek-v4-pro-0813",
@@ -108,10 +110,10 @@ export function gameModel(id: string) {
   const normalized = ALIASES[id] || id;
   return GAME_MODELS.find(model => model.id === normalized || model.upstream === normalized);
 }
-// AWS reasoning models, GLM, and GPT OSS need room for visible output even on short tasks.
+// AWS reasoning models and GLM need room for visible output even on short tasks.
 export function generationBudget(id: string, requested: number) {
   const model = gameModel(id);
-  if (model?.provider.startsWith('bedrock-') || model?.id === 'gpt-oss-120b' || model?.id === 'glm-5.3-flash') {
+  if (model?.provider.startsWith('bedrock-') || model?.id === 'glm-5.3-flash') {
     return Math.max(requested >= 5000 ? 8000 : 2048, requested);
   }
   return requested;

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generationBudget, GAME_MODELS } from '../src/gameModels';
-import { configuredModelId, WORKERS_AI_MODEL, getOpenRouterModelOptions, getOpenRouterBoardResponseFormat, getFinalClueResponseFormat } from '../src/openRouterModels';
+import { boardUsesStreaming, configuredModelId, WORKERS_AI_MODEL, getOpenRouterModelOptions, getOpenRouterBoardResponseFormat, getFinalClueResponseFormat } from '../src/openRouterModels';
 test('the ten choices retain the requested families and the recommended default',()=>{
-  assert.deepEqual(GAME_MODELS.map(m=>m.id),['deepseek-v4.1-flash-1017','kimi-k3','kimi-k2.5','deepseek-v4-pro-0813','glm-5.3-flash','gemma-4-26b-a4b-it','minimax-m2.5','nemotron-super-3-120b','gpt-oss-120b','qwen3.8-27b']);
+  assert.deepEqual(GAME_MODELS.map(m=>m.id),['deepseek-v4.1-flash-1017','kimi-k3','kimi-k2.5','deepseek-v4-pro-0813','glm-5.3-flash','gemma-4-26b-a4b-it','minimax-m2.5','nemotron-super-3-120b','llama-3.3-70b-instruct-fp8-fast','qwen3.8-27b']);
   assert.equal(WORKERS_AI_MODEL,'deepseek-v4.1-flash-1017');
   assert.equal(configuredModelId(null,true,true),WORKERS_AI_MODEL);
   assert.equal(configuredModelId('unlisted',true,true),WORKERS_AI_MODEL);
@@ -29,11 +29,11 @@ test('AWS model requests omit unsupported thinking fields and reserve visible ou
   assert.equal(generationBudget(WORKERS_AI_MODEL,80),80);
 });
 test('board and final request only supported output modes and schemas match content',()=>{
-  for(const id of ['kimi-k3','kimi-k2.5','minimax-m2.5','nemotron-super-3-120b','gpt-oss-120b']) {
+  for(const id of ['kimi-k3','kimi-k2.5','minimax-m2.5','nemotron-super-3-120b']) {
     assert.equal(getOpenRouterBoardResponseFormat(id).type,'json_schema');
     assert.equal(getFinalClueResponseFormat(id).type,'json_schema');
   }
-  for(const id of ['deepseek-v4.1-flash-1017','deepseek-v4-pro-0813','glm-5.3-flash','gemma-4-26b-a4b-it','qwen3.8-27b']) {
+  for(const id of ['deepseek-v4.1-flash-1017','deepseek-v4-pro-0813','glm-5.3-flash','gemma-4-26b-a4b-it','llama-3.3-70b-instruct-fp8-fast','qwen3.8-27b']) {
     assert.deepEqual(getOpenRouterBoardResponseFormat(id),{type:'json_object'});
     assert.deepEqual(getFinalClueResponseFormat(id),{type:'json_object'});
   }
@@ -46,4 +46,11 @@ test('board and final request only supported output modes and schemas match cont
 test('personal OpenRouter requests keep provider-specific ids',()=>{
   assert.equal(configuredModelId('kimi-k3',true,false),'moonshotai/kimi-k3');
   assert.equal(configuredModelId('minimax-m2.5',true,false),'minimax/minimax-m2.5');
+});
+
+test('the tested Llama replacement uses complete JSON responses and migrates GPT OSS settings',()=>{
+  assert.equal(configuredModelId('gpt-oss-120b',true,true),'llama-3.3-70b-instruct-fp8-fast');
+  assert.equal(boardUsesStreaming('llama-3.3-70b-instruct-fp8-fast'),false);
+  assert.equal(boardUsesStreaming('gpt-oss-120b'),false);
+  assert.equal(boardUsesStreaming('kimi-k3'),true);
 });

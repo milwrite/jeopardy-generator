@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { validateQuestionRule } from '../src/questionValidation';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseGeneratedBoard, parseFinalClue, waitForRetry } from '../src/generatedBoard';
@@ -28,4 +30,11 @@ test('cancellation interrupts retry backoff', async () => {
   const pending = waitForRetry(30_000, controller.signal);
   controller.abort(new Error('cancelled'));
   await assert.rejects(pending, /cancelled/);
+});
+
+test('the live Llama reference board passes structure and clue checks',()=>{
+  const board=parseGeneratedBoard(readFileSync('tests/fixtures/llama-reference-board.json','utf8'));
+  assert.equal(board.categories.reduce((n,c)=>n+c.questions.length,0),30);
+  for(const category of board.categories)for(const question of category.questions)
+    assert.equal(validateQuestionRule(category.title,question.text,question.answer).valid,true,question.text);
 });

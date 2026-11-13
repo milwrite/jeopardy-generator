@@ -95,3 +95,6 @@ export const JEOPARDY_BOARD_RESPONSE_FORMAT = {
     },
   },
 } as const;
+
+// Llama JSON mode returns a complete object; Workers AI does not stream it.
+export const boardUsesStreaming = (modelId: string) => gameModel(modelId)?.id !== "llama-3.3-70b-instruct-fp8-fast";

@@ -6,7 +6,7 @@ import {
 } from './jeopardyDefaults';
 import { readGeneratedBoardStream } from './generationProgress';
 import {
-  getOpenRouterBoardResponseFormat,
+  getOpenRouterBoardResponseFormat, boardUsesStreaming,
   getOpenRouterModelOptions,
   normalizeOpenRouterModelId,
   OPENROUTER_MODELS, WORKERS_AI_MODEL, WORKERS_AI_MODELS, isHostedSuite, configuredModelId,
@@ -628,7 +628,7 @@ Include all 30 clues. The game assigns prices and Daily Doubles.${referenceConte
             ],
             max_tokens: generationBudget(modelId, 5000),
             temperature,
-            stream: true,
+            stream: boardUsesStreaming(modelId),
             ...getOpenRouterModelOptions(modelId),
             response_format: getOpenRouterBoardResponseFormat(modelId),
             ...(!useProxy ? { provider: { require_parameters: true } } : {}),
