@@ -4,6 +4,7 @@ const path = require('path');
 const { URL } = require('url');
 const handler = require('serve-handler');
 const { createUserApi } = require('./server/userApi');
+const { createBuzzerApi } = require('./server/buzzer');
 
 const PORT = process.env.PORT || 3000;
 const OPENROUTER_API_KEY =
@@ -70,6 +71,7 @@ function proxyToOpenRouter(req, res) {
 
 function createAppServer(options = {}) {
   const userApi = options.userApi || createUserApi(options.userApiOptions);
+  const buzzerApi = options.buzzerApi || createBuzzerApi();
   const publicDirectory = options.publicDirectory || path.join(__dirname, 'out');
 
   const server = http.createServer((req, res) => {
@@ -83,6 +85,7 @@ function createAppServer(options = {}) {
         return;
       }
 
+      if (await buzzerApi.handle(req, res, pathname)) return;
       if (await userApi.handle(req, res, pathname)) return;
 
       if (pathname === '/api/ai/chat') {

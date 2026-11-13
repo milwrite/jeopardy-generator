@@ -6,6 +6,7 @@ import { initializeCategories, initializePlayers } from './jeopardyDefaults';
 import { logBadResponse, validateQuestionRule } from './questionValidation';
 import FinalJeopardy from './FinalJeopardy';
 import CategoryTitle from './CategoryTitle';
+import { BuzzerSetup, BuzzerDock, useBuzzerHost } from './BuzzerHost';
 import type {
   BoardGenerationResult,
   BoardMetadata,
@@ -181,6 +182,11 @@ export default function JeopardyGame() {
   const [incorrectPlayers, setIncorrectPlayers] = useState<IncorrectPlayers>({});
   const [dailyDoubleWager, setDailyDoubleWager] = useState<number | null>(null);
   const [showDailyDoubleWager, setShowDailyDoubleWager] = useState(false);
+  const buzzer = useBuzzerHost(gameState, setGameState, selectedQuestion);
+  const finishBuzzerClue = () => {
+    document.body.style.overflow = '';
+    setSelectedQuestion(null); setShowAnswer(false);
+  };
   
   
   // Board editing state
@@ -560,6 +566,7 @@ export default function JeopardyGame() {
 
   // Handle category and question selection
   const handleQuestionSelect = (categoryIndex: number, questionIndex: number) => {
+    if (gameState.players.length === 0) { buzzer.setShowSetup(true); return; }
     const question = gameState.categories[categoryIndex].questions[questionIndex];
     
     if (question.answered) return;
@@ -1197,7 +1204,7 @@ export default function JeopardyGame() {
               if ((event.target as HTMLElement).closest('button, a')) event.currentTarget.closest('details')?.removeAttribute('open');
             }}>
               <h2>Your board</h2>
-              <button onClick={() => setShowEditor(!showEditor)}>{showEditor ? 'Close editor' : 'Edit clues'}</button>
+              <button onClick={() => setShowEditor(!showEditor)} disabled={Boolean(buzzer.code)}>{showEditor ? 'Close editor' : 'Edit clues'}</button>
               {authUser && <>
                 <button onClick={openBoards}>My boards</button>
                 <button onClick={openSaveDialog}>{activeBoard ? 'Save / rename' : 'Save board'}</button>
@@ -1216,14 +1223,15 @@ export default function JeopardyGame() {
               if ((event.target as HTMLElement).closest('button')) event.currentTarget.closest('details')?.removeAttribute('open');
             }}>
               <h2>Game setup</h2>
-              <button onClick={openPlayerSettings}>Players ({gameState.players.length})</button>
+              <button onClick={openPlayerSettings} disabled={Boolean(buzzer.code)}>Players ({gameState.players.length})</button>
+              <button onClick={() => buzzer.setShowSetup(true)}>Remote buzzers{buzzer.code ? ` · ${buzzer.code}` : ''}</button>
               <label className="control-menu-label" htmlFor="game-theme">Theme</label>
               <select id="game-theme" value={gameTheme} onChange={event => setGameTheme(event.target.value)}>
                 <option value="standard">Standard</option><option value="dark">Dark</option><option value="retro">Retro</option>
               </select>
               <h2>Game progress</h2>
-              <button onClick={activateFinalJeopardy} disabled={gameState.finalJeopardyActive}>Final Jeopardy</button>
-              <button className="btn-danger" onClick={resetGame}>Reset game</button>
+              <button onClick={activateFinalJeopardy} disabled={gameState.finalJeopardyActive || gameState.players.length === 0}>Final Jeopardy</button>
+              <button className="btn-danger" onClick={resetGame} disabled={Boolean(buzzer.code)}>Reset game</button>
             </div>
           </details>
           <input ref={importFileRef} type="file" accept=".json" onChange={importGameBoard} style={{ display: 'none' }} />
@@ -1233,6 +1241,7 @@ export default function JeopardyGame() {
           </span>}
         </div>
         </header>
+        <BuzzerSetup host={buzzer} />
 
         {/* AI Settings Modal */}
         {showSettings && (
@@ -1382,7 +1391,12 @@ export default function JeopardyGame() {
                   
                   <div className="question-controls">
                     <div className="button-row">
-                      <button className={showAnswer ? 'btn-ghost' : 'btn-primary'} onClick={toggleShowAnswer}>
+                      <button className={showAnswer ? 'btn-ghost' : 'btn-primary'} onClick={async () => {
+                        if (!showAnswer && buzzer.code && !buzzer.dailyDouble && buzzer.round?.state !== 'resolved') {
+                          if (!await buzzer.lock(true)) return;
+                        }
+                        toggleShowAnswer();
+                      }}>
                         {showAnswer ? 'Hide Response' : 'Reveal Response'}
                       </button>
                       
@@ -1417,7 +1431,7 @@ export default function JeopardyGame() {
                       )}
                     </div>
                     
-                    {showAnswer ? (
+                    {showAnswer && (!buzzer.code || buzzer.dailyDouble) ? (
                       <div className="player-selection">
                         <h4>Award Points To:</h4>
                         <div className="player-answer-buttons">
@@ -1481,6 +1495,7 @@ export default function JeopardyGame() {
         )}
       </div>
       
+      <BuzzerDock host={buzzer} clueOpen={Boolean(selectedQuestion)} onFinish={finishBuzzerClue} />
       {/* Scoreboard */}
       <div className="scoreboard">
         {gameState.players.map((player, index) => (

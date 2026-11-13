@@ -28,6 +28,7 @@ export interface Player {
   name: string;
   score: number;
   active: boolean;
+  remoteParticipantId?: string;
 }
 
 export interface GameState {
@@ -35,6 +36,8 @@ export interface GameState {
   players: Player[];
   currentPlayer: number;
   finalJeopardyActive: boolean;
+  buzzerRoomCode?: string;
+  buzzerAppliedEvents?: string[];
   finalRound?: import('./finalRound').FinalRoundState;
   referenceMaterials?: import('./referenceMaterials').ReferenceMaterial[];
 }
