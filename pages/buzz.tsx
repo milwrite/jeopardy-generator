@@ -77,24 +77,21 @@ export default function BuzzPage() {
     <div className="buzzer-player-card">
       <h1>Jeopardy! Buzzer</h1>
       {!identity ? <form onSubmit={join}>
-        <p>Join the host’s room. Use a display name your group will recognize.</p>
         <label htmlFor="room-code">Room code</label>
         <input id="room-code" value={code} maxLength={6} pattern="[A-Fa-f0-9]{6}" autoComplete="off" required onChange={e => setCode(e.target.value.trim().toUpperCase())} />
         <label htmlFor="display-name">Display name</label>
         <input id="display-name" value={name} maxLength={32} autoComplete="nickname" required onChange={e => setName(e.target.value)} />
         <button className="btn-primary" type="submit" disabled={pending || !/^[A-F0-9]{6}$/.test(code) || !name.trim()}>Join room</button>
-        <p>Your name stays with you between clues and when you reconnect in this browser.</p>
       </form> : <>
         <p>Room <strong>{identity.code}</strong></p>
         <h2>{self?.name || 'Reconnecting…'}</h2>
         <p className="buzzer-status" role="status" aria-live="polite">
-          {!connected ? 'Reconnecting — buzzing paused' : mine ? `You buzzed ${mine.position === 1 ? 'first' : `#${mine.position}`}! Wait for the host.` : round?.state === 'open' ? 'Buzzers are open — go!' : 'Buzzers locked — wait for the host'}
+          {!connected ? 'Reconnecting…' : mine ? `You buzzed ${mine.position === 1 ? 'first' : `#${mine.position}`}.` : round?.state === 'open' ? 'Open' : 'Locked'}
         </p>
         <button className={`buzz-button ${ready ? 'buzz-ready' : ''}`} disabled={!ready} onClick={buzz}>{mine ? `BUZZED #${mine.position}` : 'BUZZ!'}</button>
         {first && <p className="buzzer-first">First buzz: <strong>{first.name}</strong></p>}
         <ol aria-label="Buzz order">{round?.order.map(b => <li key={b.id}>{room?.participants.find(p => p.id === b.participantId)?.name}</li>)}</ol>
-        <p>You can press the button with Space or Enter. Watch the host’s screen for the clue and scores.</p>
-        <button className="btn-ghost" onClick={switchPlayer}>Join as a different player</button>
+        <button className="btn-ghost" onClick={switchPlayer}>Switch player</button>
       </>}
       {error && <p role="alert">{error}</p>}
     </div>

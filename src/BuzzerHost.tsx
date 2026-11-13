@@ -133,30 +133,26 @@ export function useBuzzerHost(state: GameState, setState: Setter, selected: Sele
 type Host = ReturnType<typeof useBuzzerHost>;
 function BuzzerSoundControls({ host }: { host: Host }) {
   return <div className="buzzer-sound-controls" role="group" aria-label="Buzzer sound">
-    <button className="btn-ghost" aria-pressed={!host.muted} onClick={host.toggleMute}>Sound: {host.muted ? 'Off' : 'On'}</button>
-    <button className="btn-ghost" onClick={host.previewSound}>Preview sound</button>
+    <button className="btn-ghost" aria-pressed={!host.muted} onClick={host.toggleMute}>Sound {host.muted ? 'off' : 'on'}</button>
+    <button className="btn-ghost" onClick={host.previewSound}>Test sound</button>
   </div>;
 }
 export function BuzzerSetup({ host }: { host: Host }) {
   if (!host.showSetup) return null;
   const joinUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/buzz/?room=${host.code}`;
   return <section className="buzzer-setup" aria-label="Remote buzzer setup">
-    <div className="buzzer-heading"><h2>Remote buzzers</h2><button onClick={() => host.setShowSetup(false)} className="btn-ghost">Close setup</button></div>
+    <div className="buzzer-heading"><h2>Remote buzzers</h2><button onClick={() => host.setShowSetup(false)} className="btn-ghost">Close</button></div>
     <BuzzerSoundControls host={host} />
     {!host.code ? <>
-      <p>Players join with a display name on their own phone or computer. Share the board in your call.</p>
-      <p>Empty default player slots are replaced by joined players. Existing names and scores stay.</p>
-      <button className="btn-primary" disabled={host.pending || host.available !== true} onClick={host.start}>Start buzzer room</button>
+      <button className="btn-primary" disabled={host.pending || host.available !== true} onClick={host.start}>Start room</button>
       {host.available === false && <p role="status">Remote buzzing is unavailable on this host.</p>}
     </> : <>
       <p>Room <strong className="buzzer-code">{host.code}</strong></p>
       <label htmlFor="buzzer-join-link">Player join link</label><input id="buzzer-join-link" readOnly value={joinUrl} onFocus={e => e.currentTarget.select()} />
-      <p>Share this link with players. Your host controls stay in this browser.</p>
       <p role="status">{host.connected ? `${host.room?.participants.length || 0} players joined` : 'Connecting…'}</p>
       <ul>{host.room?.participants.map(player => <li key={player.id}>{player.name}</li>)}</ul>
-      <p>Names persist between clues and browser reconnects. Rooms end after a server restart or 8 hours without activity.</p>
-      <button className="btn-ghost" onClick={host.end} disabled={host.pending}>End buzzer room</button>
-      {!host.connected && <button className="btn-ghost" onClick={host.disconnect}>Detach unavailable room</button>}
+      <button className="btn-ghost" onClick={host.end} disabled={host.pending}>End room</button>
+      {!host.connected && <button className="btn-ghost" onClick={host.disconnect}>Leave room</button>}
     </>}
     {host.error && <p role="alert">{host.error}</p>}
   </section>;
@@ -166,30 +162,25 @@ export function BuzzerClueControls({ host, onFinish }: { host: Host; onFinish: (
   if (!host.code) return null;
   if (host.dailyDouble) return <p className="buzzer-status">Buzzers are locked for this Daily Double.</p>;
   const resolved = host.round?.state === 'resolved';
-  const first = host.room?.participants.find(player => player.id === host.round?.order[0]?.participantId);
+  const isOpen = host.round?.state === 'open';
   return <section className="buzzer-clue" aria-label="Host buzzer controls">
     <div className="buzzer-heading"><h3>Room {host.code}</h3><BuzzerSoundControls host={host} /></div>
-    <p className="buzzer-status" role="status" aria-live="polite">
-      {!host.ready ? 'Connecting to this clue…' : resolved ? 'Clue scored — buzzers locked' : host.round?.state === 'open' ? 'Buzzers open' : 'Buzzers locked'}
-      {first && <> · First buzz: <strong>{first.name}</strong></>}
-    </p>
-    <div className="button-row">
-      <button className="btn-primary" disabled={!host.ready || host.pending || resolved || host.round?.answerRevealed || !host.room?.participants.length || host.round?.state === 'open'} onClick={host.open}>Open buzzers</button>
-      <button className="btn-ghost" disabled={!host.ready || host.pending || host.round?.state !== 'open'} onClick={() => host.lock()}>Lock buzzers</button>
-    </div>
+    {!resolved && <button className="buzzer-main-action" disabled={!host.ready || host.pending || host.round?.answerRevealed || !host.room?.participants.length}
+      onClick={() => isOpen ? host.lock() : host.open()}>{isOpen ? 'Lock buzzers' : 'Open buzzers'}</button>}
     <ol aria-label="Buzz order">{host.round?.order.map(buzz => <li key={buzz.id}>
       {host.room?.participants.find(player => player.id === buzz.participantId)?.name}
       {host.round?.judged.includes(buzz.participantId) ? ' — judged' : ''}
     </li>)}</ol>
     {host.nextPlayer && !resolved && <div className="buzzer-judge">
-      <p>Responding: <strong>{host.nextPlayer.name}</strong></p>
-      <button className="correct-button" disabled={!host.ready || host.pending} onClick={() => host.score(true)}>Correct: {host.nextPlayer.name} +${host.round?.value}</button>
-      <button className="incorrect-button" disabled={!host.ready || host.pending} onClick={() => host.score(false)}>Incorrect: {host.nextPlayer.name} −${host.round?.value}</button>
+      <p className="buzzer-respondent">{host.nextPlayer.name}</p>
+      <div className="buzzer-score-actions">
+      <button className="correct-button" aria-label={`Correct: ${host.nextPlayer.name} +$${host.round?.value}`} disabled={!host.ready || host.pending} onClick={() => host.score(true)}>Correct +${host.round?.value}</button>
+      <button className="incorrect-button" aria-label={`Incorrect: ${host.nextPlayer.name} −$${host.round?.value}`} disabled={!host.ready || host.pending} onClick={() => host.score(false)}>Incorrect −${host.round?.value}</button>
+      </div>
     </div>}
-    <p className="buzzer-help">Order follows arrival at the server. After an incorrect response, judge the next queued player or reopen buzzers.</p>
     {resolved && <button className="btn-primary" onClick={onFinish}>Return to board</button>}
     {host.error && <p role="alert">{host.error}</p>}
-    {!host.connected && <button className="btn-ghost" onClick={host.disconnect}>Leave unavailable buzzer room</button>}
+    {!host.connected && <button className="btn-ghost" onClick={host.disconnect}>Leave room</button>}
   </section>;
 }
 
@@ -221,7 +212,7 @@ export function BuzzerDock({ host, clueOpen, onFinish, hidden = false }: { host:
       {clueOpen ? <BuzzerClueControls host={host} onFinish={onFinish} /> : <div className="buzzer-dock-lobby">
         <h2>Room {host.code}</h2><BuzzerSoundControls host={host} /><p>{host.room?.participants.length || 0} players joined</p>
         <ul>{host.room?.participants.map(player => <li key={player.id}>{player.name}</li>)}</ul>
-        <button className="btn-ghost" onClick={() => host.setShowSetup(true)}>Room &amp; join link</button>
+        <button className="btn-ghost" onClick={() => host.setShowSetup(true)}>Invite players</button>
         {host.error && <p role="alert">{host.error}</p>}
       </div>}
     </div>}
