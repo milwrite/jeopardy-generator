@@ -79,19 +79,19 @@ export default function BuzzPage() {
       {!identity ? <form onSubmit={join}>
         <label htmlFor="room-code">Room code</label>
         <input id="room-code" value={code} maxLength={6} pattern="[A-Fa-f0-9]{6}" autoComplete="off" required onChange={e => setCode(e.target.value.trim().toUpperCase())} />
-        <label htmlFor="display-name">Display name</label>
+        <label htmlFor="display-name">Contestant name</label>
         <input id="display-name" value={name} maxLength={32} autoComplete="nickname" required onChange={e => setName(e.target.value)} />
         <button className="btn-primary" type="submit" disabled={pending || !/^[A-F0-9]{6}$/.test(code) || !name.trim()}>Join room</button>
       </form> : <>
         <p>Room <strong>{identity.code}</strong></p>
         <h2>{self?.name || 'Reconnecting…'}</h2>
         <p className="buzzer-status" role="status" aria-live="polite">
-          {!connected ? 'Reconnecting…' : mine ? `You buzzed ${mine.position === 1 ? 'first' : `#${mine.position}`}.` : round?.state === 'open' ? 'Open' : 'Locked'}
+          {!connected ? 'Reconnecting…' : mine ? `You rang in ${mine.position === 1 ? 'first' : `#${mine.position}`}.` : round?.state === 'open' ? 'Open' : 'Locked'}
         </p>
-        <button className={`buzz-button ${ready ? 'buzz-ready' : ''}`} disabled={!ready} onClick={buzz}>{mine ? `BUZZED #${mine.position}` : 'BUZZ!'}</button>
-        {first && <p className="buzzer-first">First buzz: <strong>{first.name}</strong></p>}
-        <ol aria-label="Buzz order">{round?.order.map(b => <li key={b.id}>{room?.participants.find(p => p.id === b.participantId)?.name}</li>)}</ol>
-        <button className="btn-ghost" onClick={switchPlayer}>Switch player</button>
+        <button className={`buzz-button ${ready ? 'buzz-ready' : ''}`} disabled={!ready} onClick={buzz}>{mine ? `RANG IN #${mine.position}` : 'RING IN'}</button>
+        {first && <p className="buzzer-first">First to ring in: <strong>{first.name}</strong></p>}
+        <ol aria-label="Ring-in order">{round?.order.map(b => <li key={b.id}>{room?.participants.find(p => p.id === b.participantId)?.name}</li>)}</ol>
+        <button className="btn-ghost" onClick={switchPlayer}>Switch contestant</button>
       </>}
       {error && <p role="alert">{error}</p>}
     </div>

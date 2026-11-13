@@ -6,7 +6,7 @@ import type { BuzzerRoom } from './buzzerClient';
 export function applyBuzzerSnapshot(state: GameState, room: BuzzerRoom): GameState {
   if (state.buzzerRoomCode !== room.code) return state;
   let changed = false;
-  const replaceDefaults = room.participants.length > 0 && state.players.every((player, i) => player.name === `Player ${i + 1}` && player.score === 0 && !player.remoteParticipantId);
+  const replaceDefaults = room.participants.length > 0 && state.players.every((player, i) => (player.name === `Player ${i + 1}` || player.name === `Contestant ${i + 1}`) && player.score === 0 && !player.remoteParticipantId);
   const players = replaceDefaults ? [] : state.players.map(player => ({ ...player }));
   for (const participant of room.participants) {
     if (!players.some(player => player.remoteParticipantId === participant.id)) {

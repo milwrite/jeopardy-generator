@@ -148,8 +148,8 @@ export function BuzzerSetup({ host }: { host: Host }) {
       {host.available === false && <p role="status">Remote buzzing is unavailable on this host.</p>}
     </> : <>
       <p>Room <strong className="buzzer-code">{host.code}</strong></p>
-      <label htmlFor="buzzer-join-link">Player join link</label><input id="buzzer-join-link" readOnly value={joinUrl} onFocus={e => e.currentTarget.select()} />
-      <p role="status">{host.connected ? `${host.room?.participants.length || 0} players joined` : 'Connecting…'}</p>
+      <label htmlFor="buzzer-join-link">Contestant join link</label><input id="buzzer-join-link" readOnly value={joinUrl} onFocus={e => e.currentTarget.select()} />
+      <p role="status">{host.connected ? `${host.room?.participants.length || 0} contestants joined` : 'Connecting…'}</p>
       <ul>{host.room?.participants.map(player => <li key={player.id}>{player.name}</li>)}</ul>
       <button className="btn-ghost" onClick={host.end} disabled={host.pending}>End room</button>
       {!host.connected && <button className="btn-ghost" onClick={host.disconnect}>Leave room</button>}
@@ -167,7 +167,7 @@ export function BuzzerClueControls({ host, onFinish }: { host: Host; onFinish: (
     <div className="buzzer-heading"><h3>Room {host.code}</h3><BuzzerSoundControls host={host} /></div>
     {!resolved && <button className="buzzer-main-action" disabled={!host.ready || host.pending || host.round?.answerRevealed || !host.room?.participants.length}
       onClick={() => isOpen ? host.lock() : host.open()}>{isOpen ? 'Lock buzzers' : 'Open buzzers'}</button>}
-    <ol aria-label="Buzz order">{host.round?.order.map(buzz => <li key={buzz.id}>
+    <ol aria-label="Ring-in order">{host.round?.order.map(buzz => <li key={buzz.id}>
       {host.room?.participants.find(player => player.id === buzz.participantId)?.name}
       {host.round?.judged.includes(buzz.participantId) ? ' — judged' : ''}
     </li>)}</ol>
@@ -210,15 +210,15 @@ export function BuzzerDock({ host, clueOpen, onFinish, hidden = false }: { host:
   return <aside ref={dock} className={`buzzer-dock${expanded ? ' buzzer-dock-expanded' : ''}`} aria-label="Buzzer dock">
     {expanded && <div id="buzzer-dock-panel" className="buzzer-dock-panel">
       {clueOpen ? <BuzzerClueControls host={host} onFinish={onFinish} /> : <div className="buzzer-dock-lobby">
-        <h2>Room {host.code}</h2><BuzzerSoundControls host={host} /><p>{host.room?.participants.length || 0} players joined</p>
+        <h2>Room {host.code}</h2><BuzzerSoundControls host={host} /><p>{host.room?.participants.length || 0} contestants joined</p>
         <ul>{host.room?.participants.map(player => <li key={player.id}>{player.name}</li>)}</ul>
-        <button className="btn-ghost" onClick={() => host.setShowSetup(true)}>Invite players</button>
+        <button className="btn-ghost" onClick={() => host.setShowSetup(true)}>Invite contestants</button>
         {host.error && <p role="alert">{host.error}</p>}
       </div>}
     </div>}
     <button className="buzzer-dock-toggle" aria-expanded={expanded} aria-controls="buzzer-dock-panel" onClick={toggle}>
       <span className="buzzer-dock-title">Buzzers <span aria-hidden="true">{expanded ? '⌄' : '⌃'}</span></span>
-      <span className="buzzer-dock-live" role="status" aria-live="polite">{status}{clueOpen && first ? ` · First: ${first.name}` : ''}</span>
+      <span className="buzzer-dock-live" role="status" aria-live="polite">{status}{clueOpen && first ? ` · First to ring in: ${first.name}` : ''}</span>
       {clueOpen && host.nextPlayer && host.nextPlayer.id !== first?.id && <span className="buzzer-dock-next">Next: {host.nextPlayer.name}</span>}
     </button>
   </aside>;

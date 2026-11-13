@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { attachBuzzerRoom, applyBuzzerSnapshot } from '../src/buzzerState';
+import { initializePlayers } from '../src/jeopardyDefaults';
 import { createCueGate, playBuzzerCue } from '../src/buzzerSound';
 import type { BuzzerRoom } from '../src/buzzerClient';
 import type { GameState } from '../src/jeopardyTypes';
@@ -68,4 +69,11 @@ test('original cue schedules a short four-note synthesis without fetching audio'
   playBuzzerCue(fake as unknown as AudioContext);
   assert.equal(frequencies.length, 4);
   assert.ok(Math.max(...ends) < 0.4);
+});
+
+test('contestant defaults are replaced on join while existing names remain intact', () => {
+  const current = { ...state, players: initializePlayers() };
+  assert.deepEqual(current.players.map(p => p.name), ['Contestant 1', 'Contestant 2', 'Contestant 3']);
+  const result = applyBuzzerSnapshot(attachBuzzerRoom(current, room.code), { ...room, scores: [] });
+  assert.deepEqual(result.players.map(p => p.name), ['Alice', 'Bob']);
 });

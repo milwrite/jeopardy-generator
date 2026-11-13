@@ -1144,7 +1144,7 @@ export default function JeopardyGame() {
       updatedPlayers = [...editingPlayers];
       for (let i = editingPlayers.length + 1; i <= tempPlayerCount; i++) {
         updatedPlayers.push({
-          name: `Player ${i}`,
+          name: `Contestant ${i}`,
           score: 0,
           active: false
         });
@@ -1223,7 +1223,7 @@ export default function JeopardyGame() {
               if ((event.target as HTMLElement).closest('button')) event.currentTarget.closest('details')?.removeAttribute('open');
             }}>
               <h2>Game setup</h2>
-              <button onClick={openPlayerSettings} disabled={Boolean(buzzer.code)}>Players ({gameState.players.length})</button>
+              <button onClick={openPlayerSettings} disabled={Boolean(buzzer.code)}>Contestants ({gameState.players.length})</button>
               <button onClick={() => buzzer.setShowSetup(true)}>Remote buzzers{buzzer.code ? ` · ${buzzer.code}` : ''}</button>
               <label className="control-menu-label" htmlFor="game-theme">Theme</label>
               <select id="game-theme" value={gameTheme} onChange={event => setGameTheme(event.target.value)}>
@@ -1457,7 +1457,7 @@ export default function JeopardyGame() {
                         </div>
                         
                         <div className="multi-deduction">
-                          <h4>Deduct From Multiple Players</h4>
+                          <h4>Deduct From Multiple Contestants</h4>
                           <div className="player-checkboxes">
                             {gameState.players.map((player, idx) => (
                               <div 
@@ -1505,7 +1505,7 @@ export default function JeopardyGame() {
             aria-current={index === gameState.currentPlayer ? 'true' : undefined}
           >
             <p className="player-name">{player.name}</p>
-            {index === gameState.currentPlayer && <span className="sr-only">Current player</span>}
+            {index === gameState.currentPlayer && <span className="sr-only">Controls the board</span>}
             <p className="score">${player.score}</p>
           </div>
         ))}
@@ -1758,13 +1758,13 @@ export default function JeopardyGame() {
         </div>
       )}
 
-      {/* Player Settings Modal */}
+      {/* Contestants Modal */}
       {showPlayerSettings && (
         <div className="editor-modal">
           <div className="editor-content">
-            <h2>Player Settings</h2>
+            <h2>Contestants</h2>
             <div className="form-group">
-              <label>Number of Players:</label>
+              <label>Number of contestants:</label>
               <select 
                 value={tempPlayerCount} 
                 onChange={(e) => {
@@ -1777,7 +1777,7 @@ export default function JeopardyGame() {
                     const newPlayers = [...editingPlayers];
                     for (let i = editingPlayers.length + 1; i <= newCount; i++) {
                       newPlayers.push({
-                        name: `Player ${i}`,
+                        name: `Contestant ${i}`,
                         score: 0,
                         active: false
                       });
@@ -1789,16 +1789,16 @@ export default function JeopardyGame() {
                   }
                 }}
               >
-                <option value="2">2 Players</option>
-                <option value="3">3 Players</option>
-                <option value="4">4 Players</option>
+                <option value="2">2 Contestants</option>
+                <option value="3">3 Contestants</option>
+                <option value="4">4 Contestants</option>
               </select>
             </div>
             
             {/* Player name editor */}
             {editingPlayers.map((player, index) => (
               <div className="form-group" key={index}>
-                <label>Player {index + 1} Name:</label>
+                <label>Contestant {index + 1} name:</label>
                 <input 
                   type="text" 
                   value={player.name} 
@@ -1813,7 +1813,7 @@ export default function JeopardyGame() {
             
             <div className="button-group">
               <button className="btn-ghost" onClick={() => setShowPlayerSettings(false)}>Cancel</button>
-              <button className="btn-primary" onClick={savePlayerSettings}>Save Players</button>
+              <button className="btn-primary" onClick={savePlayerSettings}>Save contestants</button>
             </div>
           </div>
         </div>

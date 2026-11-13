@@ -83,7 +83,7 @@ function createBuzzerApi({ now = Date.now, maxRooms = 128, ttl = 8 * 60 * 60 * 1
           return true;
         }
         const name = typeof data.name === 'string' ? data.name.trim().replace(/\s+/g, ' ') : '';
-        if (!name || name.length > 32 || /[\u0000-\u001f\u007f]/.test(name)) fail(400, 'Use a display name of 1–32 characters');
+        if (!name || name.length > 32 || /[\u0000-\u001f\u007f]/.test(name)) fail(400, 'Use a contestant name of 1–32 characters');
         if (room.participants.some(p => p.name.toLowerCase() === name.toLowerCase())) fail(409, 'That name is already in use. Reconnect in your original browser or choose a different name.');
         if (room.participants.length >= 64) fail(409, 'This room is full');
         const joined = { id: randomUUID(), token: secret(), name };
@@ -125,7 +125,7 @@ function createBuzzerApi({ now = Date.now, maxRooms = 128, ttl = 8 * 60 * 60 * 1
           } else {
             if (typeof data.correct !== 'boolean' || round.state === 'resolved') fail(409, 'This clue is closed');
             const next = round.order.find(b => !round.judged.includes(b.participantId));
-            if (!next || next.participantId !== data.participantId) fail(409, 'Judge the next player in buzz order');
+            if (!next || next.participantId !== data.participantId) fail(409, 'Judge the next contestant in ring-in order');
             const event = { id: randomUUID(), roundId: round.id, clueKey: round.clueKey,
               participantId: next.participantId, correct: data.correct, delta: data.correct ? round.value : -round.value };
             room.scores.push(event);

@@ -39,7 +39,7 @@ export const initializeCategories = (): Category[] =>
 
 export const initializePlayers = (playerCount = 3): Player[] =>
   Array.from({ length: playerCount }, (_, index) => ({
-    name: `Player ${index + 1}`,
+    name: `Contestant ${index + 1}`,
     score: 0,
     active: index === 0,
   }));
